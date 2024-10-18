@@ -14,17 +14,25 @@
       padding: 0;
     }
 
-    .notebook {
-      width: 1240px; /* Due pagine A6 affiancate con margini */
-      margin: 50px auto;
+    .toolbar-container {
       display: flex;
       justify-content: center;
-      align-items: center;
+      margin-top: 20px;
+    }
+
+    .notebook {
+      max-width: 900px;
+      margin: 20px auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: flex-start;
     }
 
     .page {
-      width: 420px; /* Larghezza approssimativa di una pagina A6 */
-      height: 594px; /* Altezza approssimativa di una pagina A6 */
+      width: 100%;
+      max-width: 400px;
+      height: 500px;
       background-color: #fff;
       margin: 10px;
       padding: 20px;
@@ -33,65 +41,67 @@
       position: relative;
     }
 
-    .page::before, .page::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-    }
-
-    .page::before {
-      left: -5px;
-      border-left: 2px solid #ccc;
-    }
-
-    .page::after {
-      right: -5px;
-      border-right: 2px solid #ccc;
-    }
-
-    .toolbar {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    #save-button {
-      padding: 10px 20px;
-      font-size: 16px;
-    }
-
-    /* Nascondi la barra degli strumenti di Quill */
-    .ql-toolbar {
-      display: none;
+    @media (min-width: 800px) {
+      .page {
+        width: 45%;
+      }
     }
 
     /* Stile del cursore */
     .ql-editor {
       font-size: 16px;
       line-height: 1.5;
+      min-height: 460px;
     }
+
+    /* Personalizza la toolbar di Quill */
+    .ql-toolbar.ql-snow {
+      border: none;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .ql-container.ql-snow {
+      border: none;
+    }
+
+    /* Pulsante Salva */
+    #save-button {
+      margin: 20px auto;
+      display: block;
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+
   </style>
 </head>
 <body>
 
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <button id="save-button">Salva come PDF</button>
+  <!-- Toolbar personalizzata -->
+  <div class="toolbar-container">
+    <div id="toolbar">
+      <!-- Aggiungi gli strumenti che desideri -->
+      <select class="ql-font"></select>
+      <select class="ql-size"></select>
+      <button class="ql-bold"></button>
+      <button class="ql-italic"></button>
+      <button class="ql-underline"></button>
+      <button class="ql-strike"></button>
+      <select class="ql-color"></select>
+      <select class="ql-background"></select>
+      <button class="ql-clean"></button>
+    </div>
   </div>
 
   <!-- Contenitore del quaderno -->
   <div class="notebook">
     <!-- Pagina sinistra -->
-    <div id="page-left" class="page">
-      <div id="editor-left" class="editor"></div>
-    </div>
+    <div id="editor-left" class="page"></div>
     <!-- Pagina destra -->
-    <div id="page-right" class="page">
-      <div id="editor-right" class="editor"></div>
-    </div>
+    <div id="editor-right" class="page"></div>
   </div>
+
+  <!-- Pulsante Salva -->
+  <button id="save-button">Salva come PDF</button>
 
   <!-- Script delle librerie -->
   <!-- Quill -->
@@ -100,79 +110,74 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- html2canvas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Script per il suono di digitazione -->
-  <audio id="type-sound" src="https://www.soundjay.com/mechanical/sounds/typewriter-key-1.mp3" preload="auto"></audio>
+
+  <!-- Script per il suono di digitazione (opzionale) -->
+  <!-- <audio id="type-sound" src="URL_DEL_SUONO" preload="auto"></audio> -->
 
   <!-- Script personalizzato -->
   <script>
     // Inizializzazione degli editor Quill
+    var toolbarOptions = [
+      [{ 'font': [] }],
+      [{ 'size': ['small', false, 'large', 'huge'] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      ['clean']
+    ];
+
     var quillLeft = new Quill('#editor-left', {
+      modules: {
+        toolbar: '#toolbar'
+      },
       theme: 'snow'
     });
 
     var quillRight = new Quill('#editor-right', {
+      modules: {
+        toolbar: false
+      },
       theme: 'snow'
     });
-
-    // Funzione per aggiungere suono di digitazione e ritardo
-    function addTypingEffects(editor) {
-      const typeSound = document.getElementById('type-sound');
-      const input = editor.root;
-
-      let isTyping = false;
-
-      input.addEventListener('keydown', function(e) {
-        if (!isTyping) {
-          isTyping = true;
-          e.preventDefault();
-
-          setTimeout(() => {
-            // Riproduci il suono
-            typeSound.currentTime = 0;
-            typeSound.play();
-
-            // Inserisci il carattere dopo un leggero ritardo
-            const selection = editor.getSelection();
-            const key = e.key;
-
-            if (key === 'Backspace') {
-              editor.deleteText(selection.index - 1, 1);
-            } else if (key.length === 1) {
-              editor.insertText(selection.index, key);
-              editor.setSelection(selection.index + 1, 0);
-            }
-
-            isTyping = false;
-          }, 100); // Ritardo di 100ms
-        }
-      });
-    }
-
-    addTypingEffects(quillLeft);
-    addTypingEffects(quillRight);
 
     // Funzione per salvare come PDF
     document.getElementById('save-button').addEventListener('click', function() {
       const { jsPDF } = window.jspdf;
-      var doc = new jsPDF('portrait', 'pt', [840, 594]); // Dimensioni per due pagine A6 affiancate
+      var doc = new jsPDF('portrait', 'pt', 'a4');
 
       // Cattura le pagine come canvas
       Promise.all([
-        html2canvas(document.querySelector("#page-left")),
-        html2canvas(document.querySelector("#page-right"))
+        html2canvas(document.querySelector("#editor-left")),
+        html2canvas(document.querySelector("#editor-right"))
       ]).then(function(canvases) {
         // Aggiungi la pagina sinistra
         var imgDataLeft = canvases[0].toDataURL('image/png');
-        doc.addImage(imgDataLeft, 'PNG', 0, 0, 420, 594);
+        doc.addImage(imgDataLeft, 'PNG', 40, 40, 250, 400);
 
         // Aggiungi la pagina destra
         var imgDataRight = canvases[1].toDataURL('image/png');
-        doc.addImage(imgDataRight, 'PNG', 420, 0, 420, 594);
+        doc.addImage(imgDataRight, 'PNG', 300, 40, 250, 400);
 
         // Salva il PDF
         doc.save('quaderno.pdf');
       });
     });
+
+    // Opzionale: Aggiungere suono di digitazione (rimuovere i commenti se necessario)
+    /*
+    function addTypingSound(editor) {
+      const typeSound = document.getElementById('type-sound');
+      editor.root.addEventListener('keydown', function(e) {
+        if (typeSound) {
+          typeSound.currentTime = 0;
+          typeSound.play();
+        }
+      });
+    }
+
+    addTypingSound(quillLeft);
+    addTypingSound(quillRight);
+    */
+
   </script>
 </body>
 </html>
