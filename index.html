@@ -47,7 +47,7 @@
       content: '';
       position: absolute;
       top: 0;
-      left: 50px;
+      left: 60px; /* Sposta la linea verticale a destra */
       bottom: 0;
       width: 2px;
       background-color: #d3d3d3;
@@ -64,13 +64,15 @@
       background-repeat: repeat-y;
     }
 
-    /* Stile del cursore */
+    /* Stile dell'editor */
     .ql-editor {
       font-size: 16px;
-      line-height: 1.8;
+      line-height: 31px; /* Deve corrispondere all'altezza delle linee di sfondo */
       min-height: 720px;
       padding: 0;
       background-color: transparent;
+      padding-left: 75px; /* Spazio per la spirale e il margine sinistro */
+      padding-top: 15px; /* Per centrare verticalmente il testo tra le linee */
     }
 
     /* Rimuovere i bordi dell'editor Quill */
