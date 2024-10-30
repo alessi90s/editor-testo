@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="UTF-8">
-  <title>Editor di Testo - Pagine A4</title>
+  <title>Editor di Testo - Quaderno A4</title>
   <!-- Foglio di stile di Quill -->
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
   <!-- Stili personalizzati -->
@@ -34,8 +34,8 @@
     .editor-container {
       width: 210mm; /* Larghezza A4 */
       margin: 20px auto;
-      background-color: #fff;
-      padding: 20mm;
+      background-color: #e9e7df; /* Sfondo simile alla carta */
+      padding: 0;
       box-sizing: border-box;
       position: relative;
     }
@@ -44,18 +44,45 @@
       width: 100%;
       height: 297mm; /* Altezza A4 */
       background-color: #fff;
-      margin-bottom: 20px;
+      margin: 0 auto 20px auto;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      overflow: hidden;
       position: relative;
+      overflow: hidden;
       page-break-after: always;
+      background-image: linear-gradient(to bottom, transparent 30px, #c8c8c8 31px);
+      background-size: 100% 31px;
+      border: 1px solid #ccc;
+    }
+
+    .page:before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 60px; /* Sposta la linea verticale a destra */
+      bottom: 0;
+      width: 2px;
+      background-color: #d3d3d3;
+    }
+
+    .spiral {
+      position: absolute;
+      top: 20px;
+      left: 15px;
+      width: 20px;
+      height: calc(100% - 40px);
+      background-image: radial-gradient(circle at center, #888 2px, transparent 2px);
+      background-size: 4px 25px;
+      background-repeat: repeat-y;
     }
 
     .ql-editor {
-      font-size: 12pt;
-      line-height: 1.5;
-      min-height: calc(297mm - 40mm); /* Altezza pagina meno padding */
+      font-size: 14pt;
+      line-height: 31px; /* Deve corrispondere all'altezza delle linee di sfondo */
+      min-height: calc(297mm - 40mm); /* Altezza pagina meno margini */
       padding: 0;
+      background-color: transparent;
+      padding-left: 75px; /* Spazio per la spirale e il margine sinistro */
+      padding-top: 15px; /* Per centrare verticalmente il testo tra le linee */
       box-sizing: border-box;
     }
 
@@ -68,15 +95,11 @@
       border: none;
     }
 
-    /* Stile per indicare la fine della pagina */
-    .page-end {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 2px;
-      background-color: red;
-      display: none; /* Solo per debug */
+    /* Pulsante Salva */
+    #save-button {
+      margin-left: 20px;
+      padding: 8px 16px;
+      font-size: 16px;
     }
 
     /* Responsive */
@@ -121,6 +144,7 @@
   <div id="editor-container" class="editor-container">
     <!-- Prima pagina -->
     <div class="page">
+      <div class="spiral"></div>
       <div id="editor" class="editor"></div>
     </div>
   </div>
@@ -156,47 +180,57 @@
     // Variabili per la gestione delle pagine
     var editorContainer = document.getElementById('editor-container');
     var pageHeight = document.querySelector('.page').offsetHeight;
+    var quillEditors = [quill];
 
     // Funzione per aggiungere una nuova pagina
     function addPage() {
       var newPage = document.createElement('div');
       newPage.className = 'page';
-      var newEditor = document.createElement('div');
-      newEditor.className = 'editor';
-      newPage.appendChild(newEditor);
+      var spiral = document.createElement('div');
+      spiral.className = 'spiral';
+      newPage.appendChild(spiral);
+      var newEditorDiv = document.createElement('div');
+      newEditorDiv.className = 'editor';
+      newPage.appendChild(newEditorDiv);
       editorContainer.appendChild(newPage);
 
       // Inizializza un nuovo editor Quill sulla nuova pagina
-      var newQuill = new Quill(newEditor, {
+      var newQuill = new Quill(newEditorDiv, {
         modules: {
           toolbar: false
         },
         theme: 'snow'
       });
 
-      // Copia il contenuto in eccesso dalla pagina precedente
-      var overflowContent = quill.getContents(quill.getLength() - 1);
-      newQuill.setContents(overflowContent);
-
-      // Rimuovi il contenuto in eccesso dalla pagina precedente
-      quill.deleteText(quill.getLength() - 1, 1);
+      // Aggiungi il nuovo editor all'array
+      quillEditors.push(newQuill);
 
       // Aggiorna la variabile quill per puntare al nuovo editor
       quill = newQuill;
+
+      // Ascolta gli eventi di testo sul nuovo editor
+      quill.on('text-change', checkContentHeight);
     }
 
     // Funzione per controllare l'overflow e aggiungere nuove pagine
     function checkContentHeight() {
-      var editorContent = document.querySelector('.ql-editor');
+      var editorContent = quill.root;
       if (editorContent.scrollHeight > editorContent.clientHeight) {
+        // Taglia il contenuto in eccesso
+        var excessLength = quill.getLength() - quill.getContents().length();
+        var excessContent = quill.getContents(quill.getLength() - excessLength - 1, excessLength);
+
+        // Rimuovi il contenuto in eccesso dall'editor corrente
+        quill.deleteText(quill.getLength() - excessLength - 1, excessLength);
+
+        // Aggiungi una nuova pagina e inserisci il contenuto in eccesso
         addPage();
+        quill.setContents(excessContent);
       }
     }
 
     // Ascolta gli eventi di testo per controllare l'overflow
-    quill.on('text-change', function() {
-      setTimeout(checkContentHeight, 100);
-    });
+    quill.on('text-change', checkContentHeight);
 
     // Funzione per salvare come PDF
     document.getElementById('save-button').addEventListener('click', function() {
