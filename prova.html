@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <title>Editor di Testo - Quaderno A4</title>
-  <!-- Foglio di stile di Quill -->
+  <!-- Quill CSS -->
   <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-  <!-- Icone per la toolbar -->
+  <!-- Font Awesome per le icone -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- Stili personalizzati -->
   <style>
     body {
-      background-color: #f0f0f0; /* Sfondo chiaro per la pagina HTML */
+      background-color: #f0f0f0;
       font-family: 'Arial', sans-serif;
       margin: 0;
       padding: 0;
@@ -20,7 +20,7 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      background-color: #fff; /* Sfondo bianco per la toolbar */
+      background-color: #fff;
       padding: 10px;
       position: sticky;
       top: 0;
@@ -29,9 +29,8 @@
     }
 
     .editor-container {
-      width: 210mm; /* Larghezza A4 */
+      width: 210mm;
       margin: 20px auto;
-      background-color: #e9e7df; /* Sfondo simile alla carta */
       padding: 0;
       box-sizing: border-box;
       position: relative;
@@ -39,9 +38,9 @@
 
     .page {
       width: 100%;
-      height: 297mm; /* Altezza A4 */
+      height: 297mm;
       background-color: #fff;
-      margin: 0 auto 40px auto; /* Spazio tra le pagine */
+      margin: 0 auto 40px auto;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       position: relative;
       overflow: hidden;
@@ -55,7 +54,7 @@
       content: '';
       position: absolute;
       top: 0;
-      left: 60px; /* Sposta la linea verticale a destra */
+      left: 60px;
       bottom: 0;
       width: 2px;
       background-color: #d3d3d3;
@@ -74,17 +73,16 @@
 
     .ql-editor {
       font-size: 14pt;
-      line-height: 31px; /* Deve corrispondere all'altezza delle linee di sfondo */
-      height: calc(297mm - 40mm); /* Altezza pagina meno margini */
+      line-height: 31px;
+      height: calc(297mm - 40mm);
       padding: 0;
       background-color: transparent;
-      padding-left: 75px; /* Spazio per la spirale e il margine sinistro */
-      padding-top: 15px; /* Per centrare verticalmente il testo tra le linee */
+      padding-left: 75px;
+      padding-top: 15px;
       box-sizing: border-box;
       overflow: hidden;
     }
 
-    /* Rimuovere i bordi dell'editor Quill */
     .ql-container.ql-snow {
       border: none;
     }
@@ -93,7 +91,7 @@
       border: none;
     }
 
-    /* Bottoni per spostare il testo */
+    /* Bottoni per regolare la posizione del testo */
     .ql-move-up::before {
       content: '\f062';
       font-family: 'Font Awesome 6 Free';
@@ -114,25 +112,14 @@
     #save-button {
       display: none;
     }
-
-    /* Responsive */
-    @media print {
-      body {
-        background-color: #fff;
-      }
-      .page {
-        box-shadow: none;
-        margin: 0;
-      }
-    }
   </style>
 </head>
 <body>
 
-  <!-- Toolbar personalizzata -->
+  <!-- Toolbar -->
   <div class="toolbar-container">
     <div id="toolbar">
-      <!-- Aggiungi gli strumenti che desideri -->
+      <!-- Opzioni della toolbar -->
       <select class="ql-font"></select>
       <select class="ql-size"></select>
       <button class="ql-bold"></button>
@@ -147,16 +134,16 @@
       <button class="ql-align" value="center"></button>
       <button class="ql-align" value="right"></button>
       <button class="ql-align" value="justify"></button>
-      <!-- Bottoni per spostare il testo -->
+      <!-- Bottoni per regolare la posizione del testo -->
       <button class="ql-move-up"></button>
       <button class="ql-move-down"></button>
-      <!-- Pulsante Salva come icona -->
+      <!-- Pulsante Salva -->
       <button class="ql-save"></button>
       <button class="ql-clean"></button>
     </div>
   </div>
 
-  <!-- Contenitore delle pagine -->
+  <!-- Contenitore dell'editor -->
   <div id="editor-container" class="editor-container">
     <!-- Prima pagina -->
     <div class="page">
@@ -165,112 +152,63 @@
     </div>
   </div>
 
-  <!-- Script delle librerie -->
-  <!-- Quill -->
+  <!-- Script -->
+  <!-- Quill JS -->
   <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
   <!-- jsPDF -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <!-- html2canvas -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Font Awesome per le icone -->
+  <!-- Font Awesome JS -->
   <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 
   <!-- Script personalizzato -->
   <script>
-    // Inizializzazione dell'editor Quill
-    var toolbarOptions = [
-      [{ 'font': [] }],
-      [{ 'size': ['small', false, 'large', 'huge'] }],
-      ['bold', 'italic', 'underline', 'strike'],
-      [{ 'color': [] }, { 'background': [] }],
-      [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-      [{ 'align': [] }],
-      ['move-up', 'move-down'], // Bottoni per spostare il testo
-      ['save'], // Pulsante Salva
-      ['clean']
-    ];
-
     var quillEditors = [];
+    var currentPage = 0;
 
     function initializeQuillEditor(editorDiv) {
       var quill = new Quill(editorDiv, {
         modules: {
-          toolbar: editorDiv.getAttribute('data-page') === '1' ? '#toolbar' : false,
-          keyboard: {
-            bindings: {
-              'handle-enter': {
-                key: 13, // Enter key
-                handler: function(range, context) {
-                  var editorContent = this.quill.root;
-                  var maxHeight = editorContent.clientHeight;
-                  var lineHeight = parseInt(window.getComputedStyle(editorContent).lineHeight);
-                  var currentHeight = editorContent.scrollHeight;
-
-                  if (currentHeight + lineHeight > maxHeight) {
-                    // Se è l'ultima pagina, aggiungi una nuova pagina
-                    if (editorDiv.parentElement.nextSibling === null) {
-                      addPage();
-                    }
-                    // Sposta il focus al nuovo editor
-                    var nextEditorDiv = editorDiv.parentElement.nextSibling.querySelector('.editor');
-                    var nextQuill = quillEditors[parseInt(nextEditorDiv.getAttribute('data-page')) - 1];
-                    nextQuill.focus();
-                    return false; // Impedisce l'inserimento di nuovi caratteri
-                  }
-                  // Permetti normalmente il tasto Enter
-                  return true;
-                }
-              },
-              'handle-shift-enter': {
-                key: 13, // Enter key
-                shiftKey: true,
-                handler: function(range, context) {
-                  // Stessa logica di sopra
-                  var editorContent = this.quill.root;
-                  var maxHeight = editorContent.clientHeight;
-                  var lineHeight = parseInt(window.getComputedStyle(editorContent).lineHeight);
-                  var currentHeight = editorContent.scrollHeight;
-
-                  if (currentHeight + lineHeight > maxHeight) {
-                    if (editorDiv.parentElement.nextSibling === null) {
-                      addPage();
-                    }
-                    var nextEditorDiv = editorDiv.parentElement.nextSibling.querySelector('.editor');
-                    var nextQuill = quillEditors[parseInt(nextEditorDiv.getAttribute('data-page')) - 1];
-                    nextQuill.focus();
-                    return false;
-                  }
-                  // Permetti normalmente Shift+Enter
-                  return true;
-                }
-              },
-              'prevent-overflow': {
-                key: null, // Tutti i tasti
-                handler: function(range, context) {
-                  var editorContent = this.quill.root;
-                  var maxHeight = editorContent.clientHeight;
-                  var currentHeight = editorContent.scrollHeight;
-
-                  if (currentHeight > maxHeight) {
-                    // Impedisci ulteriore input
-                    return false;
-                  }
-                  return true;
-                }
-              }
-            }
-          }
+          toolbar: editorDiv.getAttribute('data-page') === '1' ? '#toolbar' : false
         },
         theme: 'snow'
       });
 
-      // Aggiungi l'editor all'array
+      quill.on('text-change', function(delta, oldDelta, source) {
+        checkContentHeight(quill, editorDiv);
+      });
+
       quillEditors.push(quill);
 
       return quill;
     }
 
-    // Funzione per aggiungere una nuova pagina
+    function checkContentHeight(quill, editorDiv) {
+      var editorContent = quill.root;
+      var maxHeight = editorContent.clientHeight;
+      var currentHeight = editorContent.scrollHeight;
+
+      if (currentHeight > maxHeight) {
+        // Sposta l'ultima linea nella nuova pagina
+        var lastLine = quill.getLine(quill.getLength() - 2);
+        var lineContent = quill.getContents(lastLine[1].index, lastLine[0].length + 1);
+
+        // Rimuovi l'ultima linea dall'editor corrente
+        quill.deleteText(lastLine[1].index, lastLine[0].length + 1);
+
+        // Aggiungi una nuova pagina
+        var newPage = addPage();
+        var newQuill = quillEditors[quillEditors.length - 1];
+
+        // Inserisci la linea nel nuovo editor
+        newQuill.setContents(lineContent);
+
+        // Imposta il focus sul nuovo editor
+        newQuill.focus();
+      }
+    }
+
     function addPage() {
       var pageCount = document.querySelectorAll('.page').length + 1;
 
@@ -283,36 +221,29 @@
       newEditorDiv.className = 'editor';
       newEditorDiv.setAttribute('data-page', pageCount);
       newPage.appendChild(newEditorDiv);
-      editorContainer.appendChild(newPage);
+      document.getElementById('editor-container').appendChild(newPage);
 
       initializeQuillEditor(newEditorDiv);
+
+      return newPage;
     }
 
-    var editorContainer = document.getElementById('editor-container');
+    // Inizializza il primo editor
     var firstEditorDiv = document.querySelector('.editor');
     firstEditorDiv.setAttribute('data-page', '1');
-
-    // Inizializza il primo editor
     var quill = initializeQuillEditor(firstEditorDiv);
 
-    // Aggiungi funzionalità per spostare il testo
+    // Funzioni per regolare la posizione del testo
     function adjustTextPosition(quill, direction) {
       var currentMarginTop = parseInt(quill.root.style.marginTop) || 0;
-      var newMarginTop = currentMarginTop + (direction * 5); // Muovi di 5px
-      // Limita il movimento all'interno della pagina
-      var maxMovement = 15; // Massimo movimento consentito
+      var newMarginTop = currentMarginTop + (direction * 5);
+      var maxMovement = 15;
       if (newMarginTop > maxMovement) newMarginTop = maxMovement;
       if (newMarginTop < -maxMovement) newMarginTop = -maxMovement;
       quill.root.style.marginTop = newMarginTop + 'px';
     }
 
-    // Aggiungi i bottoni per spostare il testo e per salvare
-    var icons = Quill.import('ui/icons');
-    icons['move-up'] = '<i class="fas fa-arrow-up"></i>';
-    icons['move-down'] = '<i class="fas fa-arrow-down"></i>';
-    icons['save'] = '<i class="fas fa-save"></i>';
-
-    // Eventi per i bottoni personalizzati
+    // Aggiungi gestori per i bottoni personalizzati della toolbar
     var toolbar = quill.getModule('toolbar');
     toolbar.addHandler('move-up', function() {
       adjustTextPosition(quill, -1);
@@ -339,8 +270,7 @@
         }
 
         html2canvas(pages[index], { scale: 2 }).then(function(canvas) {
-          // Riduci la qualità dell'immagine per ridurre la dimensione del PDF
-          var imgData = canvas.toDataURL('image/jpeg', 0.5); // Qualità 50%
+          var imgData = canvas.toDataURL('image/jpeg', 0.5);
           var imgWidth = 210;
           var pageHeight = 297;
           var imgHeight = canvas.height * imgWidth / canvas.width;
