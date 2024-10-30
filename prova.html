@@ -109,17 +109,7 @@
       border: none;
     }
 
-    /* Bottoni per spostare il testo */
-    .ql-move-up::before {
-      content: '\f062';
-      font-family: 'Font Awesome 6 Free';
-      font-weight: 900;
-    }
-    .ql-move-down::before {
-      content: '\f063';
-      font-family: 'Font Awesome 6 Free';
-      font-weight: 900;
-    }
+    /* Pulsante Salva come icona */
     .ql-save::before {
       content: '\f0c7';
       font-family: 'Font Awesome 6 Free';
@@ -147,9 +137,6 @@
       <button class="ql-align" value="center"></button>
       <button class="ql-align" value="right"></button>
       <button class="ql-align" value="justify"></button>
-      <!-- Bottoni per spostare il testo -->
-      <button class="ql-move-up"></button>
-      <button class="ql-move-down"></button>
       <!-- Pulsante Salva come icona -->
       <button class="ql-save"></button>
       <button class="ql-clean"></button>
@@ -262,24 +249,8 @@
     firstEditorDiv.setAttribute('data-page', '1');
     var quill = initializeQuillEditor(firstEditorDiv);
 
-    // Funzioni per regolare la posizione del testo
-    function adjustTextPosition(quill, direction) {
-      var currentMarginTop = parseInt(quill.root.style.marginTop) || 0;
-      var newMarginTop = currentMarginTop + (direction * 5); // Muovi di 5px
-      var maxMovement = 15; // Massimo movimento consentito
-      if (newMarginTop > maxMovement) newMarginTop = maxMovement;
-      if (newMarginTop < -maxMovement) newMarginTop = -maxMovement;
-      quill.root.style.marginTop = newMarginTop + 'px';
-    }
-
     // Aggiungi gestori per i bottoni personalizzati della toolbar
     var toolbar = quill.getModule('toolbar');
-    toolbar.addHandler('move-up', function() {
-      adjustTextPosition(quillEditors[currentEditorIndex], -1);
-    });
-    toolbar.addHandler('move-down', function() {
-      adjustTextPosition(quillEditors[currentEditorIndex], 1);
-    });
     toolbar.addHandler('save', function() {
       saveAsPDF();
     });
