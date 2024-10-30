@@ -198,13 +198,14 @@
           toolbar: editorDiv.getAttribute('data-page') === '1' ? '#toolbar' : false,
           keyboard: {
             bindings: {
-              'enter': {
-                key: 13,
+              'handle-enter': {
+                key: 13, // Enter key
                 handler: function(range, context) {
                   var editorContent = this.quill.root;
                   var maxHeight = editorContent.clientHeight;
                   var lineHeight = parseInt(window.getComputedStyle(editorContent).lineHeight);
                   var currentHeight = editorContent.scrollHeight;
+
                   if (currentHeight + lineHeight > maxHeight) {
                     // Se è l'ultima pagina, aggiungi una nuova pagina
                     if (editorDiv.parentElement.nextSibling === null) {
@@ -215,6 +216,44 @@
                     var nextQuill = quillEditors[parseInt(nextEditorDiv.getAttribute('data-page')) - 1];
                     nextQuill.focus();
                     return false; // Impedisce l'inserimento di nuovi caratteri
+                  }
+                  // Permetti normalmente il tasto Enter
+                  return true;
+                }
+              },
+              'handle-shift-enter': {
+                key: 13, // Enter key
+                shiftKey: true,
+                handler: function(range, context) {
+                  // Stessa logica di sopra
+                  var editorContent = this.quill.root;
+                  var maxHeight = editorContent.clientHeight;
+                  var lineHeight = parseInt(window.getComputedStyle(editorContent).lineHeight);
+                  var currentHeight = editorContent.scrollHeight;
+
+                  if (currentHeight + lineHeight > maxHeight) {
+                    if (editorDiv.parentElement.nextSibling === null) {
+                      addPage();
+                    }
+                    var nextEditorDiv = editorDiv.parentElement.nextSibling.querySelector('.editor');
+                    var nextQuill = quillEditors[parseInt(nextEditorDiv.getAttribute('data-page')) - 1];
+                    nextQuill.focus();
+                    return false;
+                  }
+                  // Permetti normalmente Shift+Enter
+                  return true;
+                }
+              },
+              'prevent-overflow': {
+                key: null, // Tutti i tasti
+                handler: function(range, context) {
+                  var editorContent = this.quill.root;
+                  var maxHeight = editorContent.clientHeight;
+                  var currentHeight = editorContent.scrollHeight;
+
+                  if (currentHeight > maxHeight) {
+                    // Impedisci ulteriore input
+                    return false;
                   }
                   return true;
                 }
