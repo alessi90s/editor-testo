@@ -78,12 +78,13 @@
     .ql-editor {
       font-size: 14pt;
       line-height: 31px; /* Deve corrispondere all'altezza delle linee di sfondo */
-      min-height: calc(297mm - 40mm); /* Altezza pagina meno margini */
+      height: calc(297mm - 40mm); /* Altezza pagina meno margini */
       padding: 0;
       background-color: transparent;
       padding-left: 75px; /* Spazio per la spirale e il margine sinistro */
       padding-top: 15px; /* Per centrare verticalmente il testo tra le linee */
       box-sizing: border-box;
+      overflow: hidden;
     }
 
     /* Rimuovere i bordi dell'editor Quill */
@@ -100,6 +101,14 @@
       margin-left: 20px;
       padding: 8px 16px;
       font-size: 16px;
+    }
+
+    /* Bottoni per spostare il testo */
+    .ql-move-up::before {
+      content: '↑';
+    }
+    .ql-move-down::before {
+      content: '↓';
     }
 
     /* Responsive */
@@ -134,6 +143,9 @@
       <button class="ql-align" value="center"></button>
       <button class="ql-align" value="right"></button>
       <button class="ql-align" value="justify"></button>
+      <!-- Bottoni per spostare il testo -->
+      <button class="ql-move-up"></button>
+      <button class="ql-move-down"></button>
       <button class="ql-clean"></button>
     </div>
     <!-- Pulsante Salva -->
@@ -145,7 +157,7 @@
     <!-- Prima pagina -->
     <div class="page">
       <div class="spiral"></div>
-      <div id="editor" class="editor"></div>
+      <div class="editor" data-page="1"></div>
     </div>
   </div>
 
@@ -167,23 +179,73 @@
       [{ 'color': [] }, { 'background': [] }],
       [{ 'list': 'ordered' }, { 'list': 'bullet' }],
       [{ 'align': [] }],
+      ['move-up', 'move-down'], // Bottoni per spostare il testo
       ['clean']
     ];
 
-    var quill = new Quill('#editor', {
-      modules: {
-        toolbar: '#toolbar'
-      },
-      theme: 'snow'
-    });
+    var quillEditors = [];
 
-    // Variabili per la gestione delle pagine
-    var editorContainer = document.getElementById('editor-container');
-    var pageHeight = document.querySelector('.page').offsetHeight;
-    var quillEditors = [quill];
+    function initializeQuillEditor(editorDiv) {
+      var quill = new Quill(editorDiv, {
+        modules: {
+          toolbar: editorDiv.getAttribute('data-page') === '1' ? '#toolbar' : false,
+          keyboard: {
+            bindings: {
+              // Impedire l'inserimento di nuovi caratteri se il limite è raggiunto
+              'prevent-exceed': {
+                key: 13,
+                handler: function(range, context) {
+                  var editor = this.quill;
+                  var editorContent = editor.root;
+                  if (editorContent.scrollHeight > editorContent.clientHeight) {
+                    // Se è l'ultima pagina, aggiungi una nuova pagina
+                    if (editorDiv.nextSibling === null) {
+                      addPage();
+                    }
+                    return false; // Impedisce l'inserimento di nuovi caratteri
+                  }
+                  return true;
+                }
+              }
+            }
+          }
+        },
+        theme: 'snow'
+      });
+
+      // Aggiungi l'editor all'array
+      quillEditors.push(quill);
+
+      // Ascolta gli eventi di testo per controllare l'overflow
+      quill.on('text-change', function() {
+        var editorContent = quill.root;
+        if (editorContent.scrollHeight > editorContent.clientHeight) {
+          // Taglia il contenuto in eccesso
+          var excessLength = quill.getLength() - 1; // -1 per l'ultimo carattere '\n'
+          var excessContent = quill.getContents(excessLength - 1, 1);
+
+          // Rimuovi il contenuto in eccesso dall'editor corrente
+          quill.deleteText(excessLength - 1, 1);
+
+          // Se non c'è una pagina successiva, aggiungila
+          if (editorDiv.nextSibling === null) {
+            addPage();
+          }
+
+          // Inserisci il contenuto in eccesso nel prossimo editor
+          var nextEditorDiv = editorDiv.nextSibling.querySelector('.editor');
+          var nextQuill = quillEditors[parseInt(nextEditorDiv.getAttribute('data-page')) - 1];
+          nextQuill.insertText(0, excessContent.ops[0].insert);
+        }
+      });
+
+      return quill;
+    }
 
     // Funzione per aggiungere una nuova pagina
     function addPage() {
+      var pageCount = document.querySelectorAll('.page').length + 1;
+
       var newPage = document.createElement('div');
       newPage.className = 'page';
       var spiral = document.createElement('div');
@@ -191,46 +253,46 @@
       newPage.appendChild(spiral);
       var newEditorDiv = document.createElement('div');
       newEditorDiv.className = 'editor';
+      newEditorDiv.setAttribute('data-page', pageCount);
       newPage.appendChild(newEditorDiv);
       editorContainer.appendChild(newPage);
 
-      // Inizializza un nuovo editor Quill sulla nuova pagina
-      var newQuill = new Quill(newEditorDiv, {
-        modules: {
-          toolbar: false
-        },
-        theme: 'snow'
-      });
-
-      // Aggiungi il nuovo editor all'array
-      quillEditors.push(newQuill);
-
-      // Aggiorna la variabile quill per puntare al nuovo editor
-      quill = newQuill;
-
-      // Ascolta gli eventi di testo sul nuovo editor
-      quill.on('text-change', checkContentHeight);
+      initializeQuillEditor(newEditorDiv);
     }
 
-    // Funzione per controllare l'overflow e aggiungere nuove pagine
-    function checkContentHeight() {
-      var editorContent = quill.root;
-      if (editorContent.scrollHeight > editorContent.clientHeight) {
-        // Taglia il contenuto in eccesso
-        var excessLength = quill.getLength() - quill.getContents().length();
-        var excessContent = quill.getContents(quill.getLength() - excessLength - 1, excessLength);
+    var editorContainer = document.getElementById('editor-container');
+    var firstEditorDiv = document.querySelector('.editor');
+    firstEditorDiv.setAttribute('data-page', '1');
 
-        // Rimuovi il contenuto in eccesso dall'editor corrente
-        quill.deleteText(quill.getLength() - excessLength - 1, excessLength);
+    // Inizializza il primo editor
+    initializeQuillEditor(firstEditorDiv);
 
-        // Aggiungi una nuova pagina e inserisci il contenuto in eccesso
-        addPage();
-        quill.setContents(excessContent);
-      }
+    // Aggiungi funzionalità per spostare il testo
+    function adjustTextPosition(quill, direction) {
+      var currentMarginTop = parseInt(quill.root.style.marginTop) || 0;
+      var newMarginTop = currentMarginTop + (direction * 5); // Muovi di 5px
+      // Limita il movimento all'interno della pagina
+      var maxMovement = 15; // Massimo movimento consentito
+      if (newMarginTop > maxMovement) newMarginTop = maxMovement;
+      if (newMarginTop < -maxMovement) newMarginTop = -maxMovement;
+      quill.root.style.marginTop = newMarginTop + 'px';
     }
 
-    // Ascolta gli eventi di testo per controllare l'overflow
-    quill.on('text-change', checkContentHeight);
+    // Aggiungi i bottoni per spostare il testo
+    var icons = Quill.import('ui/icons');
+    icons['move-up'] = '↑';
+    icons['move-down'] = '↓';
+
+    var moveUpButton = document.querySelector('.ql-move-up');
+    var moveDownButton = document.querySelector('.ql-move-down');
+
+    moveUpButton.addEventListener('click', function() {
+      adjustTextPosition(quillEditors[0], -1);
+    });
+
+    moveDownButton.addEventListener('click', function() {
+      adjustTextPosition(quillEditors[0], 1);
+    });
 
     // Funzione per salvare come PDF
     document.getElementById('save-button').addEventListener('click', function() {
@@ -247,12 +309,13 @@
         }
 
         html2canvas(pages[index], { scale: 2 }).then(function(canvas) {
-          var imgData = canvas.toDataURL('image/png');
+          // Riduci la qualità dell'immagine per ridurre la dimensione del PDF
+          var imgData = canvas.toDataURL('image/jpeg', 0.5); // Qualità 50%
           var imgWidth = 210;
           var pageHeight = 297;
           var imgHeight = canvas.height * imgWidth / canvas.width;
 
-          doc.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+          doc.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
 
           if (index < totalPages - 1) {
             doc.addPage();
