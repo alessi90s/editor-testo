@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>Editor di Testo - Quaderno A4</title>
-  <!-- Quill CSS -->
-  <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-  <!-- Font Awesome per le icone -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- CKEditor 5 -->
+  <script src="https://cdn.ckeditor.com/ckeditor5/39.0.0/classic/ckeditor.js"></script>
+  <!-- html2pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <!-- Stili personalizzati -->
   <style>
     body {
@@ -31,8 +31,6 @@
     .editor-container {
       width: 210mm;
       margin: 20px auto;
-      padding: 0;
-      box-sizing: border-box;
       position: relative;
     }
 
@@ -40,13 +38,11 @@
       width: 100%;
       height: 297mm;
       background-color: #fff;
-      margin: 0 auto 40px auto;
+      margin-bottom: 20px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       position: relative;
       overflow: hidden;
       page-break-after: always;
-      background-image: linear-gradient(to bottom, transparent 30px, #c8c8c8 31px);
-      background-size: 100% 31px;
       border: 1px solid #ccc;
     }
 
@@ -71,221 +67,158 @@
       background-repeat: repeat-y;
     }
 
-    .ql-editor {
+    .ck-editor__editable_inline {
       font-size: 14pt;
       line-height: 31px;
       height: calc(297mm - 40mm);
-      padding: 0;
-      background-color: transparent;
       padding-left: 75px;
       padding-top: 15px;
+      background-image: linear-gradient(to bottom, transparent 30px, #c8c8c8 31px);
+      background-size: 100% 31px;
       box-sizing: border-box;
       overflow: hidden;
     }
 
-    .ql-container.ql-snow {
-      border: none;
-    }
-
-    .ql-toolbar.ql-snow {
-      border: none;
-    }
-
-    /* Bottoni per regolare la posizione del testo */
-    .ql-move-up::before {
-      content: '\f062';
-      font-family: 'Font Awesome 6 Free';
-      font-weight: 900;
-    }
-    .ql-move-down::before {
-      content: '\f063';
-      font-family: 'Font Awesome 6 Free';
-      font-weight: 900;
-    }
-    .ql-save::before {
-      content: '\f0c7';
-      font-family: 'Font Awesome 6 Free';
-      font-weight: 900;
-    }
-
-    /* Nascondi il pulsante originale "Salva" */
-    #save-button {
-      display: none;
+    .ck-editor__editable_inline:focus {
+      outline: none;
     }
   </style>
 </head>
 <body>
-
-  <!-- Toolbar -->
+  <!-- Toolbar personalizzata -->
   <div class="toolbar-container">
-    <div id="toolbar">
-      <!-- Opzioni della toolbar -->
-      <select class="ql-font"></select>
-      <select class="ql-size"></select>
-      <button class="ql-bold"></button>
-      <button class="ql-italic"></button>
-      <button class="ql-underline"></button>
-      <button class="ql-strike"></button>
-      <select class="ql-color"></select>
-      <select class="ql-background"></select>
-      <button class="ql-list" value="ordered"></button>
-      <button class="ql-list" value="bullet"></button>
-      <button class="ql-align" value=""></button>
-      <button class="ql-align" value="center"></button>
-      <button class="ql-align" value="right"></button>
-      <button class="ql-align" value="justify"></button>
-      <!-- Bottoni per regolare la posizione del testo -->
-      <button class="ql-move-up"></button>
-      <button class="ql-move-down"></button>
-      <!-- Pulsante Salva -->
-      <button class="ql-save"></button>
-      <button class="ql-clean"></button>
-    </div>
+    <!-- La toolbar sarà generata dinamicamente da CKEditor -->
   </div>
 
-  <!-- Contenitore dell'editor -->
+  <!-- Contenitore delle pagine -->
   <div id="editor-container" class="editor-container">
-    <!-- Prima pagina -->
-    <div class="page">
-      <div class="spiral"></div>
-      <div class="editor" data-page="1"></div>
-    </div>
+    <!-- Le pagine saranno aggiunte dinamicamente -->
   </div>
-
-  <!-- Script -->
-  <!-- Quill JS -->
-  <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
-  <!-- jsPDF -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <!-- html2canvas -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Font Awesome JS -->
-  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
 
   <!-- Script personalizzato -->
   <script>
-    var quillEditors = [];
-    var currentPage = 0;
+    // Inizializzazione dell'editor
+    let editors = [];
+    let currentPage = 1;
 
-    function initializeQuillEditor(editorDiv) {
-      var quill = new Quill(editorDiv, {
-        modules: {
-          toolbar: editorDiv.getAttribute('data-page') === '1' ? '#toolbar' : false
-        },
-        theme: 'snow'
-      });
+    function createEditor(pageNumber) {
+      const page = document.createElement('div');
+      page.className = 'page';
 
-      quill.on('text-change', function(delta, oldDelta, source) {
-        checkContentHeight(quill, editorDiv);
-      });
-
-      quillEditors.push(quill);
-
-      return quill;
-    }
-
-    function checkContentHeight(quill, editorDiv) {
-      var editorContent = quill.root;
-      var maxHeight = editorContent.clientHeight;
-      var currentHeight = editorContent.scrollHeight;
-
-      if (currentHeight > maxHeight) {
-        // Sposta l'ultima linea nella nuova pagina
-        var lastLine = quill.getLine(quill.getLength() - 2);
-        var lineContent = quill.getContents(lastLine[1].index, lastLine[0].length + 1);
-
-        // Rimuovi l'ultima linea dall'editor corrente
-        quill.deleteText(lastLine[1].index, lastLine[0].length + 1);
-
-        // Aggiungi una nuova pagina
-        var newPage = addPage();
-        var newQuill = quillEditors[quillEditors.length - 1];
-
-        // Inserisci la linea nel nuovo editor
-        newQuill.setContents(lineContent);
-
-        // Imposta il focus sul nuovo editor
-        newQuill.focus();
-      }
-    }
-
-    function addPage() {
-      var pageCount = document.querySelectorAll('.page').length + 1;
-
-      var newPage = document.createElement('div');
-      newPage.className = 'page';
-      var spiral = document.createElement('div');
+      const spiral = document.createElement('div');
       spiral.className = 'spiral';
-      newPage.appendChild(spiral);
-      var newEditorDiv = document.createElement('div');
-      newEditorDiv.className = 'editor';
-      newEditorDiv.setAttribute('data-page', pageCount);
-      newPage.appendChild(newEditorDiv);
-      document.getElementById('editor-container').appendChild(newPage);
+      page.appendChild(spiral);
 
-      initializeQuillEditor(newEditorDiv);
+      const editorDiv = document.createElement('div');
+      editorDiv.id = 'editor-' + pageNumber;
+      page.appendChild(editorDiv);
 
-      return newPage;
+      document.getElementById('editor-container').appendChild(page);
+
+      ClassicEditor
+        .create(editorDiv, {
+          toolbar: {
+            container: '.toolbar-container',
+            items: [
+              'heading', '|',
+              'bold', 'italic', 'underline', 'strikethrough', '|',
+              'fontColor', 'fontBackgroundColor', '|',
+              'bulletedList', 'numberedList', '|',
+              'alignment', '|',
+              'undo', 'redo'
+            ]
+          },
+          heading: {
+            options: [
+              { model: 'paragraph', title: 'Paragrafo', class: 'ck-heading_paragraph' },
+              { model: 'heading1', view: 'h1', title: 'Titolo 1', class: 'ck-heading_heading1' },
+              { model: 'heading2', view: 'h2', title: 'Titolo 2', class: 'ck-heading_heading2' }
+            ]
+          },
+          // Configurazione aggiuntiva
+        })
+        .then(editor => {
+          editors.push(editor);
+
+          // Limitare l'altezza del contenuto
+          editor.model.document.on('change:data', () => {
+            limitEditorContent(editor);
+          });
+        })
+        .catch(error => {
+          console.error(error);
+        });
     }
 
-    // Inizializza il primo editor
-    var firstEditorDiv = document.querySelector('.editor');
-    firstEditorDiv.setAttribute('data-page', '1');
-    var quill = initializeQuillEditor(firstEditorDiv);
+    function limitEditorContent(editor) {
+      const view = editor.editing.view;
+      const editable = view.document.getRoot();
 
-    // Funzioni per regolare la posizione del testo
-    function adjustTextPosition(quill, direction) {
-      var currentMarginTop = parseInt(quill.root.style.marginTop) || 0;
-      var newMarginTop = currentMarginTop + (direction * 5);
-      var maxMovement = 15;
-      if (newMarginTop > maxMovement) newMarginTop = maxMovement;
-      if (newMarginTop < -maxMovement) newMarginTop = -maxMovement;
-      quill.root.style.marginTop = newMarginTop + 'px';
+      // Calcolo dell'altezza non supportato direttamente
+      // Potresti implementare una logica personalizzata se necessario
     }
 
-    // Aggiungi gestori per i bottoni personalizzati della toolbar
-    var toolbar = quill.getModule('toolbar');
-    toolbar.addHandler('move-up', function() {
-      adjustTextPosition(quill, -1);
-    });
-    toolbar.addHandler('move-down', function() {
-      adjustTextPosition(quill, 1);
-    });
-    toolbar.addHandler('save', function() {
-      saveAsPDF();
-    });
+    // Creiamo la prima pagina
+    createEditor(currentPage);
+
+    // Funzione per aggiungere una nuova pagina manualmente
+    function addNewPage() {
+      currentPage++;
+      createEditor(currentPage);
+    }
+
+    // Pulsante per aggiungere una nuova pagina
+    const addPageButton = document.createElement('button');
+    addPageButton.textContent = 'Nuova Pagina';
+    addPageButton.addEventListener('click', addNewPage);
+    document.querySelector('.toolbar-container').appendChild(addPageButton);
 
     // Funzione per salvare come PDF
     function saveAsPDF() {
-      const { jsPDF } = window.jspdf;
-      var doc = new jsPDF('p', 'mm', 'a4');
+      const element = document.getElementById('editor-container');
+      const opt = {
+        margin:       [0, 0, 0, 0],
+        filename:     'documento.pdf',
+        image:        { type: 'jpeg', quality: 0.5 },
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
 
-      var pages = document.querySelectorAll('.page');
-      var totalPages = pages.length;
+      html2pdf().from(element).set(opt).save();
+    }
 
-      function addPageToPDF(index) {
-        if (index >= totalPages) {
-          doc.save('documento.pdf');
-          return;
-        }
+    // Pulsante per salvare come PDF
+    const saveButton = document.createElement('button');
+    saveButton.textContent = 'Salva come PDF';
+    saveButton.addEventListener('click', saveAsPDF);
+    document.querySelector('.toolbar-container').appendChild(saveButton);
 
-        html2canvas(pages[index], { scale: 2 }).then(function(canvas) {
-          var imgData = canvas.toDataURL('image/jpeg', 0.5);
-          var imgWidth = 210;
-          var pageHeight = 297;
-          var imgHeight = canvas.height * imgWidth / canvas.width;
+    // Controlli per regolare la posizione verticale del testo
+    const moveUpButton = document.createElement('button');
+    moveUpButton.textContent = '↑';
+    moveUpButton.addEventListener('click', () => adjustTextPosition(-1));
+    document.querySelector('.toolbar-container').appendChild(moveUpButton);
 
-          doc.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+    const moveDownButton = document.createElement('button');
+    moveDownButton.textContent = '↓';
+    moveDownButton.addEventListener('click', () => adjustTextPosition(1));
+    document.querySelector('.toolbar-container').appendChild(moveDownButton);
 
-          if (index < totalPages - 1) {
-            doc.addPage();
-          }
+    function adjustTextPosition(direction) {
+      const editor = editors[currentPage - 1];
+      const view = editor.editing.view;
+      const editable = view.document.getRoot();
 
-          addPageToPDF(index + 1);
-        });
-      }
+      const currentMarginTop = parseInt(editable.getStyle('margin-top')) || 0;
+      let newMarginTop = currentMarginTop + (direction * 5);
 
-      addPageToPDF(0);
+      // Limita il movimento
+      if (newMarginTop > 15) newMarginTop = 15;
+      if (newMarginTop < -15) newMarginTop = -15;
+
+      view.change(writer => {
+        writer.setStyle('margin-top', newMarginTop + 'px', editable);
+      });
     }
   </script>
 </body>
