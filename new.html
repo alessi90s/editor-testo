@@ -53,10 +53,11 @@
             position: relative;
             width: 210mm;
             height: 297mm;
-            margin: 20px auto;
+            margin: 0 auto; /* Rimosso il margine superiore e inferiore */
             overflow: hidden;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             background-color: #ffffff;
+            box-sizing: border-box; /* Assicura che padding e border siano inclusi nelle dimensioni totali */
         }
 
         /* Sfondo a righe */
@@ -77,7 +78,7 @@
         #editor {
             width: 100%;
             height: 100%;
-            padding: 40px 20px 20px 60px; /* Aggiunta di un margine sinistro per l'effetto quaderno */
+            padding: 20px 20px 20px 60px; /* Ridotto il padding superiore */
             box-sizing: border-box;
             overflow: auto;
             outline: none;
@@ -204,12 +205,26 @@
         function saveAsPDF() {
             const element = document.getElementById('page');
             const opt = {
-                margin:       [0, 0, 0, 0],
-                filename:     'documento.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, width: element.scrollWidth, height: element.scrollHeight },
-                jsPDF:        { unit: 'mm', format: [210, 297], orientation: 'portrait' }
+                margin: 0,
+                filename: 'documento.pdf',
+                image: { type: 'jpeg', quality: 1 },
+                html2canvas: {
+                    scale: 2,
+                    onclone: (clonedDoc) => {
+                        // Rimuovi margini e padding nel documento clonato
+                        const clonedElement = clonedDoc.getElementById('page');
+                        clonedElement.style.margin = '0';
+                        clonedElement.style.padding = '0';
+                        clonedElement.style.boxShadow = 'none';
+
+                        const clonedEditor = clonedDoc.getElementById('editor');
+                        clonedEditor.style.padding = '0';
+                        clonedEditor.style.marginTop = '0';
+                    }
+                },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
+
             html2pdf().set(opt).from(element).save();
         }
 
@@ -239,22 +254,7 @@
             input.click();
         }
 
-        // Gestione del limite della pagina
-        const editor = document.getElementById('editor');
-        editor.addEventListener('input', () => {
-            const maxHeight = editor.parentElement.clientHeight - 80; // Adjusted for padding
-            if (editor.scrollHeight > maxHeight) {
-                alert('Hai raggiunto il limite della pagina A4.');
-                // Puoi implementare la creazione di una nuova pagina qui
-            }
-        });
-
-        // Prevenire l'incollaggio di formattazione indesiderata
-        editor.addEventListener('paste', function(e) {
-            e.preventDefault();
-            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-            document.execCommand('insertText', false, text);
-        });
+        // Rimosso l'evento 'input' che mostrava l'alert
     </script>
 </body>
 </html>
