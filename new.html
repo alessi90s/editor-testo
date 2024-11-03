@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Editor di Testo</title>
+    <style>
+        /* Stili per il corpo della pagina */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Stili per la toolbar */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            background-color: #f0f0f0;
+            padding: 10px;
+        }
+
+        .toolbar button, .toolbar input[type="color"] {
+            margin: 5px;
+            padding: 10px;
+            font-size: 16px;
+        }
+
+        /* Stili per la pagina */
+        .page {
+            position: relative;
+            width: 210mm;
+            height: 297mm;
+            margin: 20px auto;
+            overflow: hidden;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            background-color: white;
+        }
+
+        /* Sfondo a righe */
+        .page.righe {
+            background-image: linear-gradient(to bottom, transparent 95%, #d3d3d3 95%, #d3d3d3 100%);
+            background-size: 100% 24px;
+        }
+
+        /* Sfondo a quadri */
+        .page.quadri {
+            background-image:
+                linear-gradient(to bottom, transparent 95%, #d3d3d3 95%, #d3d3d3 100%),
+                linear-gradient(to right, transparent 95%, #d3d3d3 95%, #d3d3d3 100%);
+            background-size: 24px 24px;
+        }
+
+        /* Stili per l'editor */
+        #editor {
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow: auto;
+            outline: none;
+            position: relative;
+        }
+
+        /* Nascondi le scrollbar */
+        #editor::-webkit-scrollbar {
+            display: none;
+        }
+
+        #editor {
+            -ms-overflow-style: none;  /* IE e Edge */
+            scrollbar-width: none;     /* Firefox */
+        }
+    </style>
+</head>
+<body>
+    <!-- Toolbar con i pulsanti di controllo -->
+    <div class="toolbar">
+        <button onclick="switchBackground()">Righe/Quadri</button>
+        <button onclick="makeBold()"><b>Grassetto</b></button>
+        <button onclick="makeItalic()"><i>Corsivo</i></button>
+        <button onclick="makeUnderline()"><u>Sottolineato</u></button>
+        <input type="color" id="highlightColor" onchange="highlightText()" value="#ffff00">
+        <button onclick="moveTextUp()">Sposta Su</button>
+        <button onclick="moveTextDown()">Sposta Giù</button>
+        <button onclick="saveAsPDF()">Salva come PDF</button>
+        <button onclick="saveFile()">Salva</button>
+        <button onclick="loadFile()">Apri</button>
+    </div>
+
+    <!-- Area della pagina con l'editor -->
+    <div class="page righe" id="page">
+        <div id="editor" contenteditable="true"></div>
+    </div>
+
+    <!-- Script JavaScript -->
+    <script>
+        let isRighe = true;
+
+        // Funzione per switchare tra sfondo a righe e a quadri
+        function switchBackground() {
+            const page = document.getElementById('page');
+            if (isRighe) {
+                page.classList.remove('righe');
+                page.classList.add('quadri');
+            } else {
+                page.classList.remove('quadri');
+                page.classList.add('righe');
+            }
+            isRighe = !isRighe;
+        }
+
+        // Funzioni di formattazione del testo
+        function makeBold() {
+            document.execCommand('bold');
+        }
+
+        function makeItalic() {
+            document.execCommand('italic');
+        }
+
+        function makeUnderline() {
+            document.execCommand('underline');
+        }
+
+        function highlightText() {
+            const color = document.getElementById('highlightColor').value;
+            document.execCommand('hiliteColor', false, color);
+        }
+
+        // Funzioni per spostare il testo verticalmente
+        function moveTextUp() {
+            const editor = document.getElementById('editor');
+            const currentMargin = parseInt(window.getComputedStyle(editor).marginTop) || 0;
+            editor.style.marginTop = (currentMargin - 5) + 'px';
+        }
+
+        function moveTextDown() {
+            const editor = document.getElementById('editor');
+            const currentMargin = parseInt(window.getComputedStyle(editor).marginTop) || 0;
+            editor.style.marginTop = (currentMargin + 5) + 'px';
+        }
+
+        // Funzione per salvare il contenuto come PDF (richiede html2pdf.js)
+        function saveAsPDF() {
+            const element = document.getElementById('page');
+            // Controlla se la libreria html2pdf è disponibile
+            if (typeof html2pdf !== 'undefined') {
+                html2pdf().from(element).save('documento.pdf');
+            } else {
+                alert('Per salvare in PDF, includi la libreria html2pdf.js nel tuo file.');
+            }
+        }
+
+        // Funzione per salvare il contenuto in un file di testo
+        function saveFile() {
+            const content = document.getElementById('editor').innerHTML;
+            const blob = new Blob([content], {type: "text/plain;charset=utf-8"});
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "documento.txt";
+            link.click();
+        }
+
+        // Funzione per caricare un file di testo
+        function loadFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'text/plain';
+            input.onchange = e => { 
+                const file = e.target.files[0]; 
+                const reader = new FileReader();
+                reader.onload = event => {
+                    document.getElementById('editor').innerHTML = event.target.result;
+                };
+                reader.readAsText(file);
+            }
+            input.click();
+        }
+
+        // Gestione del limite della pagina
+        const editor = document.getElementById('editor');
+        editor.addEventListener('input', () => {
+            const maxHeight = editor.parentElement.clientHeight;
+            if (editor.scrollHeight > maxHeight) {
+                alert('Hai raggiunto il limite della pagina A4.');
+                // Puoi implementare la creazione di una nuova pagina qui
+            }
+        });
+    </script>
+</body>
+</html>
