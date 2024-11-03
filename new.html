@@ -28,7 +28,7 @@
             justify-content: center; /* Centratura della toolbar */
         }
 
-        .toolbar button {
+        .toolbar button, .toolbar input[type="color"] {
             margin: 5px;
             padding: 10px;
             font-size: 18px;
@@ -42,30 +42,24 @@
             border-radius: 5px;
         }
 
-        .color-picker {
-            display: flex;
-            align-items: center;
-        }
-
-        .color-picker button {
-            width: 30px;
-            height: 30px;
-            margin: 0 2px;
-            border-radius: 3px;
-            border: 1px solid #ccc;
+        .toolbar input[type="color"] {
+            width: 40px;
+            height: 40px;
             padding: 0;
+            border: none;
+            cursor: pointer;
         }
 
         /* Stili per la pagina */
         .page {
             position: relative;
             width: 210mm;
-            height: 297mm;
+            min-height: 297mm;
             margin: 0 auto;
             overflow: hidden;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
             background-color: #ffffff;
             box-sizing: border-box;
+            page-break-after: always;
         }
 
         /* Sfondo a righe */
@@ -85,12 +79,10 @@
         /* Stili per l'editor */
         #editor {
             width: 100%;
-            height: 100%;
+            min-height: 297mm;
             padding: 20px 20px 20px 60px;
             box-sizing: border-box;
-            overflow: auto;
             outline: none;
-            position: relative;
             font-size: 16px;
             line-height: 24px;
         }
@@ -115,6 +107,17 @@
             width: 2px;
             background-color: #c0c0c0;
         }
+
+        /* Stile per il contenitore delle pagine */
+        #pagesContainer {
+            width: 210mm;
+            margin: 20px auto;
+        }
+
+        /* Evita interruzioni a metà riga */
+        .page {
+            page-break-inside: avoid;
+        }
     </style>
     <!-- Inclusione della libreria html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -127,21 +130,11 @@
         <button onclick="makeItalic()" title="Corsivo"><i class="fas fa-italic"></i></button>
         <button onclick="makeUnderline()" title="Sottolineato"><i class="fas fa-underline"></i></button>
 
-        <!-- Colori predefiniti per il testo -->
-        <div class="color-picker" title="Colore del testo">
-            <button style="background-color: #000000;" onclick="setTextColor('#000000')"></button>
-            <button style="background-color: #ff0000;" onclick="setTextColor('#ff0000')"></button>
-            <button style="background-color: #0000ff;" onclick="setTextColor('#0000ff')"></button>
-            <button style="background-color: #008000;" onclick="setTextColor('#008000')"></button>
-        </div>
-
-        <!-- Colori predefiniti per l'evidenziazione -->
-        <div class="color-picker" title="Evidenzia">
-            <button style="background-color: #ffff00;" onclick="setHighlightColor('#ffff00')"></button>
-            <button style="background-color: #ffa500;" onclick="setHighlightColor('#ffa500')"></button>
-            <button style="background-color: #00ffff;" onclick="setHighlightColor('#00ffff')"></button>
-            <button style="background-color: #ff69b4;" onclick="setHighlightColor('#ff69b4')"></button>
-        </div>
+        <!-- Pulsanti per il colore del testo e l'evidenziazione -->
+        <button onclick="toggleTextColorPicker()" title="Colore del testo"><i class="fas fa-palette"></i></button>
+        <input type="color" id="textColor" value="#000000" style="display:none;">
+        <button onclick="toggleHighlightColorPicker()" title="Evidenzia"><i class="fas fa-highlighter"></i></button>
+        <input type="color" id="highlightColor" value="#ffff00" style="display:none;">
 
         <button onclick="moveTextUp()" title="Sposta su"><i class="fas fa-arrow-up"></i></button>
         <button onclick="moveTextDown()" title="Sposta giù"><i class="fas fa-arrow-down"></i></button>
@@ -150,9 +143,12 @@
         <button onclick="loadFile()" title="Apri"><i class="fas fa-folder-open"></i></button>
     </div>
 
-    <!-- Area della pagina con l'editor -->
-    <div class="page righe" id="page">
-        <div id="editor" contenteditable="true"></div>
+    <!-- Contenitore delle pagine -->
+    <div id="pagesContainer">
+        <!-- Area della pagina con l'editor -->
+        <div class="page righe" id="page">
+            <div id="editor" contenteditable="true"></div>
+        </div>
     </div>
 
     <!-- Script JavaScript -->
@@ -161,14 +157,16 @@
 
         // Funzione per switchare tra sfondo a righe e a quadri
         function switchBackground() {
-            const page = document.getElementById('page');
-            if (isRighe) {
-                page.classList.remove('righe');
-                page.classList.add('quadri');
-            } else {
-                page.classList.remove('quadri');
-                page.classList.add('righe');
-            }
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => {
+                if (isRighe) {
+                    page.classList.remove('righe');
+                    page.classList.add('quadri');
+                } else {
+                    page.classList.remove('quadri');
+                    page.classList.add('righe');
+                }
+            });
             isRighe = !isRighe;
         }
 
@@ -185,14 +183,29 @@
             document.execCommand('underline');
         }
 
-        // Funzioni per applicare colori predefiniti al testo
-        function setTextColor(color) {
-            document.execCommand('foreColor', false, color);
+        // Funzione per aprire il selettore di colore del testo
+        function toggleTextColorPicker() {
+            const colorPicker = document.getElementById('textColor');
+            colorPicker.click();
         }
 
-        function setHighlightColor(color) {
-            document.execCommand('hiliteColor', false, color);
+        // Applica il colore del testo selezionato
+        document.getElementById('textColor').addEventListener('change', function() {
+            const color = this.value;
+            document.execCommand('foreColor', false, color);
+        });
+
+        // Funzione per aprire il selettore di colore per l'evidenziazione
+        function toggleHighlightColorPicker() {
+            const colorPicker = document.getElementById('highlightColor');
+            colorPicker.click();
         }
+
+        // Applica il colore di evidenziazione selezionato
+        document.getElementById('highlightColor').addEventListener('change', function() {
+            const color = this.value;
+            document.execCommand('hiliteColor', false, color);
+        });
 
         // Funzioni per spostare il testo verticalmente
         function moveTextUp() {
@@ -207,25 +220,16 @@
             editor.style.marginTop = (currentMargin + 5) + 'px';
         }
 
-        // Funzione per salvare il contenuto come PDF utilizzando html2pdf.js
+        // Funzione per salvare il contenuto come PDF supportando pagine multiple
         function saveAsPDF() {
-            const element = document.getElementById('page');
+            const element = document.getElementById('pagesContainer');
             const opt = {
                 margin: 0,
                 filename: 'documento.pdf',
                 image: { type: 'jpeg', quality: 1 },
                 html2canvas: {
                     scale: 2,
-                    onclone: (clonedDoc) => {
-                        const clonedElement = clonedDoc.getElementById('page');
-                        clonedElement.style.margin = '0';
-                        clonedElement.style.padding = '0';
-                        clonedElement.style.boxShadow = 'none';
-
-                        const clonedEditor = clonedDoc.getElementById('editor');
-                        clonedEditor.style.padding = '0';
-                        clonedEditor.style.marginTop = '0';
-                    }
+                    useCORS: true
                 },
                 jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
             };
@@ -235,7 +239,7 @@
 
         // Funzione per salvare il contenuto in un file di testo
         function saveFile() {
-            const content = document.getElementById('editor').innerHTML;
+            const content = document.getElementById('pagesContainer').innerHTML;
             const blob = new Blob([content], {type: "text/plain;charset=utf-8"});
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -252,14 +256,94 @@
                 const file = e.target.files[0];
                 const reader = new FileReader();
                 reader.onload = event => {
-                    document.getElementById('editor').innerHTML = event.target.result;
+                    document.getElementById('pagesContainer').innerHTML = event.target.result;
+                    // Aggiorna gli event listener per le nuove pagine
+                    updatePageListeners();
                 };
                 reader.readAsText(file);
             }
             input.click();
         }
 
-        // Prevenire l'incollaggio di formattazione indesiderata
+        // Funzione per suddividere il contenuto su più pagine
+        function paginateContent() {
+            const editor = document.getElementById('editor');
+            const pagesContainer = document.getElementById('pagesContainer');
+            const content = editor.innerHTML;
+
+            // Rimuovi tutte le pagine esistenti
+            pagesContainer.innerHTML = '';
+
+            // Crea una pagina iniziale
+            let page = createNewPage();
+            pagesContainer.appendChild(page);
+
+            // Crea un div temporaneo per misurare il contenuto
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.visibility = 'hidden';
+            tempDiv.style.width = '100%';
+            tempDiv.innerHTML = content;
+            document.body.appendChild(tempDiv);
+
+            while (tempDiv.offsetHeight > 0) {
+                // Sposta il contenuto nel nuovo editor fino a riempire la pagina
+                const pageContent = tempDiv.innerHTML;
+                page.querySelector('.editor').innerHTML = pageContent;
+
+                // Se il contenuto supera la pagina, rimuovi gli elementi in eccesso
+                while (page.querySelector('.editor').offsetHeight > 297 * 3.7795 - 40) { // Conversione mm to px
+                    tempDiv.firstChild.remove();
+                    page.querySelector('.editor').innerHTML = tempDiv.innerHTML;
+                }
+
+                // Se rimane contenuto, crea una nuova pagina
+                if (tempDiv.offsetHeight > 0) {
+                    page = createNewPage();
+                    pagesContainer.appendChild(page);
+                }
+            }
+
+            document.body.removeChild(tempDiv);
+        }
+
+        // Funzione per creare una nuova pagina
+        function createNewPage() {
+            const page = document.createElement('div');
+            page.classList.add('page');
+            page.classList.add(isRighe ? 'righe' : 'quadri');
+
+            const editorDiv = document.createElement('div');
+            editorDiv.classList.add('editor');
+            editorDiv.style.width = '100%';
+            editorDiv.style.minHeight = '297mm';
+            editorDiv.style.padding = '20px 20px 20px 60px';
+            editorDiv.style.boxSizing = 'border-box';
+            editorDiv.style.outline = 'none';
+            editorDiv.style.fontSize = '16px';
+            editorDiv.style.lineHeight = '24px';
+
+            page.appendChild(editorDiv);
+            return page;
+        }
+
+        // Aggiorna gli event listener per le nuove pagine (dopo il caricamento)
+        function updatePageListeners() {
+            const editors = document.querySelectorAll('.editor');
+            editors.forEach(editor => {
+                editor.contentEditable = 'true';
+                editor.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+                    document.execCommand('insertText', false, text);
+                });
+            });
+        }
+
+        // Event listener per paginare il contenuto dopo ogni input
+        document.getElementById('editor').addEventListener('input', paginateContent);
+
+        // Prevenire l'incollaggio di formattazione indesiderata nell'editor principale
         const editor = document.getElementById('editor');
         editor.addEventListener('paste', function(e) {
             e.preventDefault();
