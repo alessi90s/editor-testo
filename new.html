@@ -25,9 +25,10 @@
             position: sticky;
             top: 0;
             z-index: 1;
+            justify-content: center; /* Centratura della toolbar */
         }
 
-        .toolbar button, .toolbar input[type="color"] {
+        .toolbar button {
             margin: 5px;
             padding: 10px;
             font-size: 18px;
@@ -41,11 +42,18 @@
             border-radius: 5px;
         }
 
-        .toolbar input[type="color"] {
-            width: 40px;
-            height: 40px;
+        .color-picker {
+            display: flex;
+            align-items: center;
+        }
+
+        .color-picker button {
+            width: 30px;
+            height: 30px;
+            margin: 0 2px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
             padding: 0;
-            border: none;
         }
 
         /* Stili per la pagina */
@@ -53,11 +61,11 @@
             position: relative;
             width: 210mm;
             height: 297mm;
-            margin: 0 auto; /* Rimosso il margine superiore e inferiore */
+            margin: 0 auto;
             overflow: hidden;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             background-color: #ffffff;
-            box-sizing: border-box; /* Assicura che padding e border siano inclusi nelle dimensioni totali */
+            box-sizing: border-box;
         }
 
         /* Sfondo a righe */
@@ -78,7 +86,7 @@
         #editor {
             width: 100%;
             height: 100%;
-            padding: 20px 20px 20px 60px; /* Ridotto il padding superiore */
+            padding: 20px 20px 20px 60px;
             box-sizing: border-box;
             overflow: auto;
             outline: none;
@@ -93,8 +101,8 @@
         }
 
         #editor {
-            -ms-overflow-style: none;  /* IE e Edge */
-            scrollbar-width: none;     /* Firefox */
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
 
         /* Linea verticale sul margine sinistro (solo per sfondo a righe) */
@@ -118,10 +126,23 @@
         <button onclick="makeBold()" title="Grassetto"><i class="fas fa-bold"></i></button>
         <button onclick="makeItalic()" title="Corsivo"><i class="fas fa-italic"></i></button>
         <button onclick="makeUnderline()" title="Sottolineato"><i class="fas fa-underline"></i></button>
-        <button onclick="toggleTextColorPicker()" title="Colore del testo"><i class="fas fa-palette"></i></button>
-        <input type="color" id="textColor" value="#000000" style="display:none;">
-        <button onclick="toggleHighlightColorPicker()" title="Evidenzia"><i class="fas fa-highlighter"></i></button>
-        <input type="color" id="highlightColor" value="#ffff00" style="display:none;">
+
+        <!-- Colori predefiniti per il testo -->
+        <div class="color-picker" title="Colore del testo">
+            <button style="background-color: #000000;" onclick="setTextColor('#000000')"></button>
+            <button style="background-color: #ff0000;" onclick="setTextColor('#ff0000')"></button>
+            <button style="background-color: #0000ff;" onclick="setTextColor('#0000ff')"></button>
+            <button style="background-color: #008000;" onclick="setTextColor('#008000')"></button>
+        </div>
+
+        <!-- Colori predefiniti per l'evidenziazione -->
+        <div class="color-picker" title="Evidenzia">
+            <button style="background-color: #ffff00;" onclick="setHighlightColor('#ffff00')"></button>
+            <button style="background-color: #ffa500;" onclick="setHighlightColor('#ffa500')"></button>
+            <button style="background-color: #00ffff;" onclick="setHighlightColor('#00ffff')"></button>
+            <button style="background-color: #ff69b4;" onclick="setHighlightColor('#ff69b4')"></button>
+        </div>
+
         <button onclick="moveTextUp()" title="Sposta su"><i class="fas fa-arrow-up"></i></button>
         <button onclick="moveTextDown()" title="Sposta giù"><i class="fas fa-arrow-down"></i></button>
         <button onclick="saveAsPDF()" title="Salva come PDF"><i class="fas fa-file-pdf"></i></button>
@@ -164,29 +185,14 @@
             document.execCommand('underline');
         }
 
-        // Funzione per aprire il selettore di colore del testo
-        function toggleTextColorPicker() {
-            const colorPicker = document.getElementById('textColor');
-            colorPicker.click();
-        }
-
-        // Applica il colore del testo selezionato
-        document.getElementById('textColor').addEventListener('change', function() {
-            const color = this.value;
+        // Funzioni per applicare colori predefiniti al testo
+        function setTextColor(color) {
             document.execCommand('foreColor', false, color);
-        });
-
-        // Funzione per aprire il selettore di colore per l'evidenziazione
-        function toggleHighlightColorPicker() {
-            const colorPicker = document.getElementById('highlightColor');
-            colorPicker.click();
         }
 
-        // Applica il colore di evidenziazione selezionato
-        document.getElementById('highlightColor').addEventListener('change', function() {
-            const color = this.value;
+        function setHighlightColor(color) {
             document.execCommand('hiliteColor', false, color);
-        });
+        }
 
         // Funzioni per spostare il testo verticalmente
         function moveTextUp() {
@@ -211,7 +217,6 @@
                 html2canvas: {
                     scale: 2,
                     onclone: (clonedDoc) => {
-                        // Rimuovi margini e padding nel documento clonato
                         const clonedElement = clonedDoc.getElementById('page');
                         clonedElement.style.margin = '0';
                         clonedElement.style.padding = '0';
@@ -243,8 +248,8 @@
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'text/plain';
-            input.onchange = e => { 
-                const file = e.target.files[0]; 
+            input.onchange = e => {
+                const file = e.target.files[0];
                 const reader = new FileReader();
                 reader.onload = event => {
                     document.getElementById('editor').innerHTML = event.target.result;
@@ -254,7 +259,13 @@
             input.click();
         }
 
-        // Rimosso l'evento 'input' che mostrava l'alert
+        // Prevenire l'incollaggio di formattazione indesiderata
+        const editor = document.getElementById('editor');
+        editor.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            document.execCommand('insertText', false, text);
+        });
     </script>
 </body>
 </html>
