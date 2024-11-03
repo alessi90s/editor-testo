@@ -2,27 +2,50 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Editor di Testo</title>
+    <title>Editor di Testo - Quaderno Virtuale</title>
+    <!-- Inclusione di Font Awesome per le icone -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stili CSS -->
     <style>
         /* Stili per il corpo della pagina */
         body {
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
         }
 
         /* Stili per la toolbar */
         .toolbar {
             display: flex;
             flex-wrap: wrap;
-            background-color: #f0f0f0;
+            background-color: #ffffff;
             padding: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
 
         .toolbar button, .toolbar input[type="color"] {
             margin: 5px;
             padding: 10px;
-            font-size: 16px;
+            font-size: 18px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .toolbar button:hover {
+            background-color: #e0e0e0;
+            border-radius: 5px;
+        }
+
+        .toolbar input[type="color"] {
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border: none;
         }
 
         /* Stili per la pagina */
@@ -33,20 +56,20 @@
             margin: 20px auto;
             overflow: hidden;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
-            background-color: white;
+            background-color: #ffffff;
         }
 
         /* Sfondo a righe */
         .page.righe {
-            background-image: linear-gradient(to bottom, transparent 95%, #d3d3d3 95%, #d3d3d3 100%);
+            background-image: linear-gradient(to bottom, transparent 95%, #c0c0c0 95%, #c0c0c0 100%);
             background-size: 100% 24px;
         }
 
         /* Sfondo a quadri */
         .page.quadri {
             background-image:
-                linear-gradient(to bottom, transparent 95%, #d3d3d3 95%, #d3d3d3 100%),
-                linear-gradient(to right, transparent 95%, #d3d3d3 95%, #d3d3d3 100%);
+                linear-gradient(to bottom, transparent 95%, #c0c0c0 95%, #c0c0c0 100%),
+                linear-gradient(to right, transparent 95%, #c0c0c0 95%, #c0c0c0 100%);
             background-size: 24px 24px;
         }
 
@@ -54,11 +77,13 @@
         #editor {
             width: 100%;
             height: 100%;
-            padding: 20px;
+            padding: 40px 20px 20px 60px; /* Aggiunta di un margine sinistro per l'effetto quaderno */
             box-sizing: border-box;
             overflow: auto;
             outline: none;
             position: relative;
+            font-size: 16px;
+            line-height: 24px;
         }
 
         /* Nascondi le scrollbar */
@@ -70,21 +95,37 @@
             -ms-overflow-style: none;  /* IE e Edge */
             scrollbar-width: none;     /* Firefox */
         }
+
+        /* Stile per le linee della pagina */
+        .page::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50px;
+            bottom: 0;
+            width: 2px;
+            background-color: #c0c0c0;
+        }
     </style>
+    <!-- Inclusione della libreria html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
     <!-- Toolbar con i pulsanti di controllo -->
     <div class="toolbar">
-        <button onclick="switchBackground()">Righe/Quadri</button>
-        <button onclick="makeBold()"><b>Grassetto</b></button>
-        <button onclick="makeItalic()"><i>Corsivo</i></button>
-        <button onclick="makeUnderline()"><u>Sottolineato</u></button>
-        <input type="color" id="highlightColor" onchange="highlightText()" value="#ffff00">
-        <button onclick="moveTextUp()">Sposta Su</button>
-        <button onclick="moveTextDown()">Sposta Giù</button>
-        <button onclick="saveAsPDF()">Salva come PDF</button>
-        <button onclick="saveFile()">Salva</button>
-        <button onclick="loadFile()">Apri</button>
+        <button onclick="switchBackground()" title="Cambia sfondo"><i class="fas fa-exchange-alt"></i></button>
+        <button onclick="makeBold()" title="Grassetto"><i class="fas fa-bold"></i></button>
+        <button onclick="makeItalic()" title="Corsivo"><i class="fas fa-italic"></i></button>
+        <button onclick="makeUnderline()" title="Sottolineato"><i class="fas fa-underline"></i></button>
+        <button onclick="changeTextColor()" title="Colore del testo"><i class="fas fa-palette"></i></button>
+        <input type="color" id="textColor" value="#000000" style="display:none;">
+        <button onclick="highlightText()" title="Evidenzia"><i class="fas fa-highlighter"></i></button>
+        <input type="color" id="highlightColor" value="#ffff00" style="display:none;">
+        <button onclick="moveTextUp()" title="Sposta su"><i class="fas fa-arrow-up"></i></button>
+        <button onclick="moveTextDown()" title="Sposta giù"><i class="fas fa-arrow-down"></i></button>
+        <button onclick="saveAsPDF()" title="Salva come PDF"><i class="fas fa-file-pdf"></i></button>
+        <button onclick="saveFile()" title="Salva"><i class="fas fa-save"></i></button>
+        <button onclick="loadFile()" title="Apri"><i class="fas fa-folder-open"></i></button>
     </div>
 
     <!-- Area della pagina con l'editor -->
@@ -122,9 +163,22 @@
             document.execCommand('underline');
         }
 
+        function changeTextColor() {
+            const colorPicker = document.getElementById('textColor');
+            colorPicker.click();
+            colorPicker.onchange = () => {
+                const color = colorPicker.value;
+                document.execCommand('foreColor', false, color);
+            };
+        }
+
         function highlightText() {
-            const color = document.getElementById('highlightColor').value;
-            document.execCommand('hiliteColor', false, color);
+            const colorPicker = document.getElementById('highlightColor');
+            colorPicker.click();
+            colorPicker.onchange = () => {
+                const color = colorPicker.value;
+                document.execCommand('hiliteColor', false, color);
+            };
         }
 
         // Funzioni per spostare il testo verticalmente
@@ -140,15 +194,17 @@
             editor.style.marginTop = (currentMargin + 5) + 'px';
         }
 
-        // Funzione per salvare il contenuto come PDF (richiede html2pdf.js)
+        // Funzione per salvare il contenuto come PDF utilizzando html2pdf.js
         function saveAsPDF() {
             const element = document.getElementById('page');
-            // Controlla se la libreria html2pdf è disponibile
-            if (typeof html2pdf !== 'undefined') {
-                html2pdf().from(element).save('documento.pdf');
-            } else {
-                alert('Per salvare in PDF, includi la libreria html2pdf.js nel tuo file.');
-            }
+            const opt = {
+                margin:       0,
+                filename:     'documento.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
         }
 
         // Funzione per salvare il contenuto in un file di testo
@@ -185,6 +241,13 @@
                 alert('Hai raggiunto il limite della pagina A4.');
                 // Puoi implementare la creazione di una nuova pagina qui
             }
+        });
+
+        // Prevenire l'incollaggio di formattazione indesiderata
+        editor.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const text = (e.originalEvent || e).clipboardData.getData('text/plain');
+            document.execCommand('insertText', false, text);
         });
     </script>
 </body>
