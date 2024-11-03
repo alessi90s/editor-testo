@@ -49,9 +49,8 @@
             background-color: #ffffff;
             padding: 10px;
             border: 1px solid #ccc;
-            max-width: 300px;
             display: grid;
-            grid-template-columns: repeat(8, 30px);
+            grid-template-columns: repeat(4, 30px);
             grid-gap: 5px;
             z-index: 1000;
             top: 50px; /* Posiziona la palette sotto la toolbar */
@@ -212,7 +211,7 @@
         // Funzione per generare la palette di colori
         function populateColorPalette(palette, applyColorFunction) {
             palette.innerHTML = ''; // Svuota la palette
-            const colors = generateColors(64);
+            const colors = getPastelColors();
             colors.forEach(color => {
                 const button = document.createElement('button');
                 button.style.backgroundColor = color;
@@ -224,15 +223,26 @@
             });
         }
 
-        // Funzione per generare un array di colori
-        function generateColors(numColors) {
-            let colors = [];
-            for(let i = 0; i < numColors; i++) {
-                let hue = Math.floor(i * (360 / numColors));
-                let color = `hsl(${hue}, 100%, 50%)`;
-                colors.push(color);
-            }
-            return colors;
+        // Funzione per ottenere un array di colori pastello classici
+        function getPastelColors() {
+            return [
+                '#000000', // Nero
+                '#FFFFFF', // Bianco
+                '#FFB3BA', // Rosa
+                '#FFDFBA', // Arancione chiaro
+                '#FFFFBA', // Giallo chiaro
+                '#Baffc9', // Verde menta
+                '#BAE1FF', // Azzurro
+                '#D7BAFF', // Lilla
+                '#FFC8DD', // Rosa pastello
+                '#FFAFCC', // Rosa salmone
+                '#CDEAC0', // Verde pastello
+                '#BDE0FE', // Blu pastello
+                '#A2D2FF', // Blu cielo
+                '#C3B1E1', // Viola pastello
+                '#FDE2E4', // Rosa pallido
+                '#E2ECE9'  // Verde acqua
+            ];
         }
 
         // Funzioni per applicare il colore
