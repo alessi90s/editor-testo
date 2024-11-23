@@ -35,7 +35,7 @@
             background: none;
             border: none;
             cursor: pointer;
-            position: relative;
+            position: relative; /* Necessario per posizionare le palette */
         }
 
         .toolbar button:hover {
@@ -53,7 +53,13 @@
             grid-template-columns: repeat(4, 30px);
             grid-gap: 5px;
             z-index: 1000;
-            top: 50px; /* Posiziona la palette sotto la toolbar */
+            top: 100%; /* Posiziona la palette sotto il pulsante */
+            left: 0;
+        }
+
+        /* Nascondi la palette quando non attiva */
+        .color-palette.hidden {
+            display: none;
         }
 
         .color-palette button {
@@ -127,9 +133,15 @@
         <button onclick="makeItalic()" title="Corsivo"><i class="fas fa-italic"></i></button>
         <button onclick="makeUnderline()" title="Sottolineato"><i class="fas fa-underline"></i></button>
 
-        <!-- Pulsanti per il colore del testo e l'evidenziazione -->
-        <button onclick="toggleTextColorPalette()" title="Colore del testo"><i class="fas fa-palette"></i></button>
-        <button onclick="toggleHighlightColorPalette()" title="Evidenzia"><i class="fas fa-highlighter"></i></button>
+        <!-- Pulsante per il colore del testo con palette -->
+        <button onclick="toggleTextColorPalette()" title="Colore del testo"><i class="fas fa-palette"></i>
+            <div id="textColorPalette" class="color-palette hidden"></div>
+        </button>
+
+        <!-- Pulsante per l'evidenziazione con palette -->
+        <button onclick="toggleHighlightColorPalette()" title="Evidenzia"><i class="fas fa-highlighter"></i>
+            <div id="highlightColorPalette" class="color-palette hidden"></div>
+        </button>
 
         <button onclick="moveTextUp()" title="Sposta su"><i class="fas fa-arrow-up"></i></button>
         <button onclick="moveTextDown()" title="Sposta giù"><i class="fas fa-arrow-down"></i></button>
@@ -137,11 +149,6 @@
         <button onclick="saveFile()" title="Salva"><i class="fas fa-save"></i></button>
         <button onclick="loadFile()" title="Apri"><i class="fas fa-folder-open"></i></button>
     </div>
-
-    <!-- Palette di colori per il testo -->
-    <div id="textColorPalette" class="color-palette" style="display: none;"></div>
-    <!-- Palette di colori per l'evidenziazione -->
-    <div id="highlightColorPalette" class="color-palette" style="display: none;"></div>
 
     <!-- Contenitore delle pagine -->
     <div id="pagesContainer">
@@ -186,26 +193,22 @@
         // Funzioni per il colore del testo e l'evidenziazione con palette di colori predefiniti
         function toggleTextColorPalette() {
             const palette = document.getElementById('textColorPalette');
-            if (palette.style.display === 'none' || palette.style.display === '') {
+            palette.classList.toggle('hidden');
+            if (!palette.classList.contains('hidden')) {
                 populateColorPalette(palette, setTextColor);
-                palette.style.display = 'grid';
-            } else {
-                palette.style.display = 'none';
             }
             // Nascondi l'altra palette se aperta
-            document.getElementById('highlightColorPalette').style.display = 'none';
+            document.getElementById('highlightColorPalette').classList.add('hidden');
         }
 
         function toggleHighlightColorPalette() {
             const palette = document.getElementById('highlightColorPalette');
-            if (palette.style.display === 'none' || palette.style.display === '') {
+            palette.classList.toggle('hidden');
+            if (!palette.classList.contains('hidden')) {
                 populateColorPalette(palette, setHighlightColor);
-                palette.style.display = 'grid';
-            } else {
-                palette.style.display = 'none';
             }
             // Nascondi l'altra palette se aperta
-            document.getElementById('textColorPalette').style.display = 'none';
+            document.getElementById('textColorPalette').classList.add('hidden');
         }
 
         // Funzione per generare la palette di colori
@@ -217,7 +220,7 @@
                 button.style.backgroundColor = color;
                 button.onclick = () => {
                     applyColorFunction(color);
-                    palette.style.display = 'none'; // Nascondi la palette dopo la selezione
+                    palette.classList.add('hidden'); // Nascondi la palette dopo la selezione
                 };
                 palette.appendChild(button);
             });
@@ -231,7 +234,7 @@
                 '#FFB3BA', // Rosa
                 '#FFDFBA', // Arancione chiaro
                 '#FFFFBA', // Giallo chiaro
-                '#Baffc9', // Verde menta
+                '#BAFFC9', // Verde menta
                 '#BAE1FF', // Azzurro
                 '#D7BAFF', // Lilla
                 '#FFC8DD', // Rosa pastello
@@ -251,18 +254,18 @@
         }
 
         function setHighlightColor(color) {
-            document.execCommand('hiliteColor', false, color);
+            document.execCommand('backColor', false, color);
         }
 
         // Chiudi le palette cliccando fuori
         document.addEventListener('click', function(event) {
             const textPalette = document.getElementById('textColorPalette');
             const highlightPalette = document.getElementById('highlightColorPalette');
-            if (!textPalette.contains(event.target) && !event.target.matches('[onclick="toggleTextColorPalette()"]')) {
-                textPalette.style.display = 'none';
+            if (!textPalette.contains(event.target) && !event.target.closest('[onclick="toggleTextColorPalette()"]')) {
+                textPalette.classList.add('hidden');
             }
-            if (!highlightPalette.contains(event.target) && !event.target.matches('[onclick="toggleHighlightColorPalette()"]')) {
-                highlightPalette.style.display = 'none';
+            if (!highlightPalette.contains(event.target) && !event.target.closest('[onclick="toggleHighlightColorPalette()"]')) {
+                highlightPalette.classList.add('hidden');
             }
         });
 
