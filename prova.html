@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Editor di Testo - Quaderno Virtuale</title>
+    <!-- Inclusione di Font Awesome per le icone -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stili CSS -->
+    <style>
+        /* Stili per il corpo della pagina */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+        }
+
+        /* Stili per la toolbar */
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            background-color: #ffffff;
+            padding: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            justify-content: center; /* Centratura della toolbar */
+        }
+
+        .toolbar button {
+            margin: 5px;
+            padding: 10px;
+            font-size: 18px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            position: relative; /* Necessario per posizionare le palette */
+        }
+
+        .toolbar button:hover {
+            background-color: #e0e0e0;
+            border-radius: 5px;
+        }
+
+        /* Stili per le palette di colori */
+        .color-palette {
+            position: absolute;
+            background-color: #ffffff;
+            padding: 10px;
+            border: 1px solid #ccc;
+            display: grid;
+            grid-template-columns: repeat(4, 30px);
+            grid-gap: 5px;
+            z-index: 1000;
+            top: 100%; /* Posiziona la palette sotto il pulsante */
+            left: 0;
+        }
+
+        /* Nascondi la palette quando non attiva */
+        .color-palette.hidden {
+            display: none;
+        }
+
+        .color-palette button {
+            width: 30px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+        }
+
+        /* Stili per la pagina */
+        .page {
+            position: relative;
+            width: 210mm;
+            min-height: 297mm;
+            margin: 20px auto;
+            overflow: hidden;
+            background-color: #ffffff;
+            box-sizing: border-box;
+            page-break-after: always;
+        }
+
+        /* Sfondo a righe */
+        .page.righe {
+            background-image: linear-gradient(to bottom, transparent 95%, #c0c0c0 95%, #c0c0c0 100%);
+            background-size: 100% 24px;
+        }
+
+        /* Sfondo a quadri */
+        .page.quadri {
+            background-image:
+                linear-gradient(to bottom, transparent 95%, #c0c0c0 95%, #c0c0c0 100%),
+                linear-gradient(to right, transparent 95%, #c0c0c0 95%, #c0c0c0 100%);
+            background-size: 24px 24px;
+        }
+
+        /* Stili per l'editor */
+        #editor {
+            width: 100%;
+            min-height: 297mm;
+            padding: 20px 20px 20px 60px;
+            box-sizing: border-box;
+            outline: none;
+            font-size: 16px;
+            line-height: 24px;
+        }
+
+        /* Linea verticale sul margine sinistro (solo per sfondo a righe) */
+        .page.righe::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50px;
+            bottom: 0;
+            width: 2px;
+            background-color: #c0c0c0;
+        }
+
+        /* Evita interruzioni a metà riga */
+        .page {
+            page-break-inside: avoid;
+        }
+    </style>
+    <!-- Inclusione della libreria html2pdf.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <!-- Toolbar con i pulsanti di controllo -->
+    <div class="toolbar">
+        <button onclick="switchBackground()" title="Cambia sfondo"><i class="fas fa-exchange-alt"></i></button>
+        <button onclick="makeBold()" title="Grassetto"><i class="fas fa-bold"></i></button>
+        <button onclick="makeItalic()" title="Corsivo"><i class="fas fa-italic"></i></button>
+        <button onclick="makeUnderline()" title="Sottolineato"><i class="fas fa-underline"></i></button>
+
+        <!-- Pulsante per il colore del testo con palette -->
+        <button onclick="toggleTextColorPalette()" title="Colore del testo"><i class="fas fa-palette"></i>
+            <div id="textColorPalette" class="color-palette hidden"></div>
+        </button>
+
+        <!-- Pulsante per l'evidenziazione con palette -->
+        <button onclick="toggleHighlightColorPalette()" title="Evidenzia"><i class="fas fa-highlighter"></i>
+            <div id="highlightColorPalette" class="color-palette hidden"></div>
+        </button>
+
+        <button onclick="moveTextUp()" title="Sposta su"><i class="fas fa-arrow-up"></i></button>
+        <button onclick="moveTextDown()" title="Sposta giù"><i class="fas fa-arrow-down"></i></button>
+        <button onclick="saveAsPDF()" title="Salva come PDF"><i class="fas fa-file-pdf"></i></button>
+        <button onclick="saveFile()" title="Salva"><i class="fas fa-save"></i></button>
+        <button onclick="loadFile()" title="Apri"><i class="fas fa-folder-open"></i></button>
+    </div>
+
+    <!-- Contenitore delle pagine -->
+    <div id="pagesContainer">
+        <!-- Area della pagina con l'editor -->
+        <div class="page righe" id="page">
+            <div id="editor" contenteditable="true"></div>
+        </div>
+    </div>
+
+    <!-- Script JavaScript -->
+    <script>
+        let isRighe = true;
+
+        // Funzione per switchare tra sfondo a righe e a quadri
+        function switchBackground() {
+            const pages = document.querySelectorAll('.page');
+            pages.forEach(page => {
+                if (isRighe) {
+                    page.classList.remove('righe');
+                    page.classList.add('quadri');
+                } else {
+                    page.classList.remove('quadri');
+                    page.classList.add('righe');
+                }
+            });
+            isRighe = !isRighe;
+        }
+
+        // Funzioni di formattazione del testo
+        function makeBold() {
+            document.execCommand('bold');
+        }
+
+        function makeItalic() {
+            document.execCommand('italic');
+        }
+
+        function makeUnderline() {
+            document.execCommand('underline');
+        }
+
+        // Funzioni per il colore del testo e l'evidenziazione con palette di colori predefiniti
+        function toggleTextColorPalette() {
+            const palette = document.getElementById('textColorPalette');
+            palette.classList.toggle('hidden');
+            if (!palette.classList.contains('hidden')) {
+                populateColorPalette(palette, setTextColor);
+            }
+            // Nascondi l'altra palette se aperta
+            document.getElementById('highlightColorPalette').classList.add('hidden');
+        }
+
+        function toggleHighlightColorPalette() {
+            const palette = document.getElementById('highlightColorPalette');
+            palette.classList.toggle('hidden');
+            if (!palette.classList.contains('hidden')) {
+                populateColorPalette(palette, setHighlightColor);
+            }
+            // Nascondi l'altra palette se aperta
+            document.getElementById('textColorPalette').classList.add('hidden');
+        }
+
+        // Funzione per generare la palette di colori
+        function populateColorPalette(palette, applyColorFunction) {
+            palette.innerHTML = ''; // Svuota la palette
+            const colors = getPastelColors();
+            colors.forEach(color => {
+                const button = document.createElement('button');
+                button.style.backgroundColor = color;
+                button.onclick = () => {
+                    applyColorFunction(color);
+                    palette.classList.add('hidden'); // Nascondi la palette dopo la selezione
+                };
+                palette.appendChild(button);
+            });
+        }
+
+        // Funzione per ottenere un array di colori pastello classici
+        function getPastelColors() {
+            return [
+                '#000000', // Nero
+                '#FFFFFF', // Bianco
+                '#FFB3BA', // Rosa
+                '#FFDFBA', // Arancione chiaro
+                '#FFFFBA', // Giallo chiaro
+                '#BAFFC9', // Verde menta
+                '#BAE1FF', // Azzurro
+                '#D7BAFF', // Lilla
+                '#FFC8DD', // Rosa pastello
+                '#FFAFCC', // Rosa salmone
+                '#CDEAC0', // Verde pastello
+                '#BDE0FE', // Blu pastello
+                '#A2D2FF', // Blu cielo
+                '#C3B1E1', // Viola pastello
+                '#FDE2E4', // Rosa pallido
+                '#E2ECE9'  // Verde acqua
+            ];
+        }
+
+        // Funzioni per applicare il colore
+        function setTextColor(color) {
+            document.execCommand('foreColor', false, color);
+        }
+
+        function setHighlightColor(color) {
+            document.execCommand('backColor', false, color);
+        }
+
+        // Chiudi le palette cliccando fuori
+        document.addEventListener('click', function(event) {
+            const textPalette = document.getElementById('textColorPalette');
+            const highlightPalette = document.getElementById('highlightColorPalette');
+            if (!textPalette.contains(event.target) && !event.target.closest('[onclick="toggleTextColorPalette()"]')) {
+                textPalette.classList.add('hidden');
+            }
+            if (!highlightPalette.contains(event.target) && !event.target.closest('[onclick="toggleHighlightColorPalette()"]')) {
+                highlightPalette.classList.add('hidden');
+            }
+        });
+
+        // Funzioni per spostare il testo verticalmente
+        function moveTextUp() {
+            const editor = document.getElementById('editor');
+            const currentMargin = parseInt(window.getComputedStyle(editor).marginTop) || 0;
+            editor.style.marginTop = (currentMargin - 5) + 'px';
+        }
+
+        function moveTextDown() {
+            const editor = document.getElementById('editor');
+            const currentMargin = parseInt(window.getComputedStyle(editor).marginTop) || 0;
+            editor.style.marginTop = (currentMargin + 5) + 'px';
+        }
+
+        // Funzione per salvare il contenuto come PDF
+        function saveAsPDF() {
+            const element = document.getElementById('pagesContainer');
+            const opt = {
+                margin:       0,
+                filename:     'documento.pdf',
+                image:        { type: 'jpeg', quality: 1 },
+                html2canvas:  {
+                    scale: 2,
+                    useCORS: true,
+                    scrollX: 0,
+                    scrollY: -window.scrollY,
+                    windowWidth: document.documentElement.offsetWidth,
+                    windowHeight: document.documentElement.offsetHeight
+                },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // Funzione per salvare il contenuto in un file di testo
+        function saveFile() {
+            const content = document.getElementById('pagesContainer').innerHTML;
+            const blob = new Blob([content], {type: "text/plain;charset=utf-8"});
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "documento.txt";
+            link.click();
+        }
+
+        // Funzione per caricare un file di testo
+        function loadFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'text/plain';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = event => {
+                    document.getElementById('pagesContainer').innerHTML = event.target.result;
+                    // Aggiorna gli event listener per le nuove pagine
+                    updatePageListeners();
+                };
+                reader.readAsText(file);
+            }
+            input.click();
+        }
+
+        // Aggiorna gli event listener per le nuove pagine (dopo il caricamento)
+        function updatePageListeners() {
+            const editors = document.querySelectorAll('[contenteditable="true"]');
+            editors.forEach(editor => {
+                editor.addEventListener('paste', function(e) {
+                    e.preventDefault();
+                    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+                    document.execCommand('insertText', false, text);
+                });
+            });
+        }
+
+        // Prevenire l'incollaggio di formattazione indesiderata nell'editor principale
+        const editor = document.getElementById('editor');
+        editor.addEventListener('paste', function(e) {
+            e.preventDefault();
+            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
+            document.execCommand('insertText', false, text);
+        });
+
+        // Assicurati che il contenuto fluisca correttamente nelle pagine
+        editor.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    </script>
+</body>
+</html>
