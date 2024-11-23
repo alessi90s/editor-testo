@@ -5,6 +5,8 @@
     <title>Editor di Testo - Quaderno Virtuale</title>
     <!-- Inclusione di Font Awesome per le icone -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Inclusione di Paged.js -->
+    <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
     <!-- Stili CSS -->
     <style>
         /* Stili per il corpo della pagina */
@@ -71,46 +73,40 @@
             cursor: pointer;
         }
 
-        /* Stili per la pagina */
-        .page {
-            position: relative;
+        /* Contenitore dell'editor */
+        #editorContainer {
             width: 210mm;
-            height: 297mm;
             margin: 0 auto;
-            overflow: hidden;
-            background-color: #ffffff;
+            padding-bottom: 60px; /* Spazio per la barra di navigazione */
+        }
+
+        /* Stili per l'editor */
+        #editor {
+            min-height: 297mm;
+            padding: 20px 20px 20px 60px;
             box-sizing: border-box;
-            page-break-after: always;
-            border: 1px solid #ccc;
+            outline: none;
+            font-size: 16px;
+            line-height: 24px;
+            background-color: #ffffff;
         }
 
         /* Sfondo a righe */
-        .page.righe {
+        #editor.righe {
             background-image: linear-gradient(to bottom, transparent 95%, #c0c0c0 95%, #c0c0c0 100%);
             background-size: 100% 24px;
         }
 
         /* Sfondo a quadri */
-        .page.quadri {
+        #editor.quadri {
             background-image:
                 linear-gradient(to bottom, transparent 95%, #c0c0c0 95%, #c0c0c0 100%),
                 linear-gradient(to right, transparent 95%, #c0c0c0 95%, #c0c0c0 100%);
             background-size: 24px 24px;
         }
 
-        /* Stili per l'editor */
-        .editor {
-            width: 100%;
-            min-height: 100%;
-            padding: 20px 20px 20px 60px;
-            box-sizing: border-box;
-            outline: none;
-            font-size: 16px;
-            line-height: 24px;
-        }
-
         /* Linea verticale sul margine sinistro (solo per sfondo a righe) */
-        .page.righe::before {
+        #editor.righe::before {
             content: '';
             position: absolute;
             top: 0;
@@ -118,6 +114,12 @@
             bottom: 0;
             width: 2px;
             background-color: #c0c0c0;
+        }
+
+        /* Stili per la pagina generata da Paged.js */
+        .pagedjs_page {
+            margin: 0 auto;
+            box-shadow: none;
         }
 
         /* Barra di navigazione delle pagine */
@@ -145,11 +147,6 @@
 
         .page-navigation span {
             font-size: 18px;
-        }
-
-        /* Contenitore principale */
-        #pagesContainer {
-            padding-bottom: 60px; /* Spazio per la barra di navigazione */
         }
     </style>
     <!-- Inclusione della libreria html2pdf.js -->
@@ -180,9 +177,9 @@
         <button onclick="loadFile()" title="Apri"><i class="fas fa-folder-open"></i></button>
     </div>
 
-    <!-- Contenitore delle pagine -->
-    <div id="pagesContainer">
-        <!-- Le pagine saranno generate dinamicamente -->
+    <!-- Contenitore dell'editor -->
+    <div id="editorContainer">
+        <div id="editor" contenteditable="true" class="righe"></div>
     </div>
 
     <!-- Barra di navigazione delle pagine -->
@@ -195,100 +192,51 @@
     <!-- Script JavaScript -->
     <script>
         let isRighe = true;
-        let currentPageIndex = 0;
-        let pages = [];
+        let currentPage = 1;
+        let totalPages = 1;
 
-        // Inizializza la prima pagina
-        function init() {
-            addPage();
-            updatePageDisplay();
-        }
-
-        // Funzione per aggiungere una nuova pagina
-        function addPage() {
-            const page = document.createElement('div');
-            page.classList.add('page', 'righe');
-            const editor = document.createElement('div');
-            editor.classList.add('editor');
-            editor.contentEditable = true;
-            editor.addEventListener('input', handleInput);
-            editor.addEventListener('paste', handlePaste);
-            page.appendChild(editor);
-            pages.push(page);
-            document.getElementById('pagesContainer').appendChild(page);
-        }
-
-        // Funzione per gestire l'input e il flusso del testo tra le pagine
-        function handleInput(e) {
-            const editor = e.target;
-            const page = editor.parentElement;
-            const maxHeight = page.clientHeight - 40; // Margine per evitare overflow
-            while (editor.scrollHeight > maxHeight) {
-                let lastChild = editor.lastChild;
-                if (!lastChild) break;
-
-                // Crea una nuova pagina se necessario
-                if (pages[currentPageIndex + 1]) {
-                    var nextEditor = pages[currentPageIndex + 1].querySelector('.editor');
-                } else {
-                    addPage();
-                    var nextEditor = pages[pages.length - 1].querySelector('.editor');
-                }
-
-                // Sposta il contenuto eccedente alla pagina successiva
-                nextEditor.insertBefore(lastChild, nextEditor.firstChild);
-                adjustCurrentPage();
-                updatePageDisplay();
-            }
-        }
-
-        // Funzione per regolare la pagina corrente
-        function adjustCurrentPage() {
-            const currentEditor = pages[currentPageIndex].querySelector('.editor');
-            const maxHeight = pages[currentPageIndex].clientHeight - 40;
-
-            while (currentEditor.scrollHeight > maxHeight) {
-                nextPage();
-            }
-        }
-
-        // Funzione per aggiornare la visualizzazione delle pagine
+        // Funzione per aggiornare la visualizzazione del numero di pagina
         function updatePageDisplay() {
-            pages.forEach((page, index) => {
-                page.style.display = 'none';
-                if (index === currentPageIndex) {
-                    page.style.display = 'block';
-                }
-            });
-            document.getElementById('currentPage').textContent = currentPageIndex + 1;
+            document.getElementById('currentPage').textContent = currentPage;
         }
 
         // Funzioni di navigazione tra le pagine
         function prevPage() {
-            if (currentPageIndex > 0) {
-                currentPageIndex--;
+            if (currentPage > 1) {
+                currentPage--;
+                scrollToPage(currentPage);
                 updatePageDisplay();
             }
         }
 
         function nextPage() {
-            if (currentPageIndex < pages.length - 1) {
-                currentPageIndex++;
+            if (currentPage < totalPages) {
+                currentPage++;
+                scrollToPage(currentPage);
                 updatePageDisplay();
+            }
+        }
+
+        function scrollToPage(pageNumber) {
+            const page = document.querySelector(`.pagedjs_page[data-page-number='${pageNumber}']`);
+            if (page) {
+                window.scrollTo({
+                    top: page.offsetTop - 100, // Aggiusta l'offset se necessario
+                    behavior: 'smooth'
+                });
             }
         }
 
         // Funzione per switchare tra sfondo a righe e a quadri
         function switchBackground() {
-            pages.forEach(page => {
-                if (isRighe) {
-                    page.classList.remove('righe');
-                    page.classList.add('quadri');
-                } else {
-                    page.classList.remove('quadri');
-                    page.classList.add('righe');
-                }
-            });
+            const editor = document.getElementById('editor');
+            if (isRighe) {
+                editor.classList.remove('righe');
+                editor.classList.add('quadri');
+            } else {
+                editor.classList.remove('quadri');
+                editor.classList.add('righe');
+            }
             isRighe = !isRighe;
         }
 
@@ -386,48 +334,50 @@
 
         // Funzioni per spostare il testo verticalmente
         function moveTextUp() {
-            const editor = pages[currentPageIndex].querySelector('.editor');
+            const editor = document.getElementById('editor');
             const currentMargin = parseInt(window.getComputedStyle(editor).marginTop) || 0;
             editor.style.marginTop = (currentMargin - 5) + 'px';
         }
 
         function moveTextDown() {
-            const editor = pages[currentPageIndex].querySelector('.editor');
+            const editor = document.getElementById('editor');
             const currentMargin = parseInt(window.getComputedStyle(editor).marginTop) || 0;
             editor.style.marginTop = (currentMargin + 5) + 'px';
         }
 
         // Funzione per salvare il contenuto come PDF
         function saveAsPDF() {
-            const element = document.getElementById('pagesContainer');
-            const opt = {
-                margin:       0,
-                filename:     'documento.pdf',
-                image:        { type: 'jpeg', quality: 1 },
-                html2canvas:  {
-                    scale: 2,
-                    useCORS: true,
-                    scrollX: 0,
-                    scrollY: 0,
-                    windowWidth: document.documentElement.offsetWidth,
-                    windowHeight: document.documentElement.offsetHeight
-                },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                pagebreak:    { mode: ['css', 'legacy'] }
-            };
+            // Usa Paged.js per generare il layout
+            paged.ready.then(() => {
+                const pages = document.querySelectorAll(".pagedjs_page");
+                const opt = {
+                    margin:       0,
+                    filename:     'documento.pdf',
+                    image:        { type: 'jpeg', quality: 1 },
+                    html2canvas:  {
+                        scale: 2,
+                        useCORS: true,
+                        scrollX: 0,
+                        scrollY: 0,
+                        windowWidth: document.documentElement.offsetWidth,
+                        windowHeight: document.documentElement.offsetHeight
+                    },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                };
 
-            // Rendi visibili tutte le pagine per il rendering
-            pages.forEach(page => page.style.display = 'block');
+                const container = document.createElement('div');
+                pages.forEach(page => {
+                    container.appendChild(page.cloneNode(true));
+                });
 
-            html2pdf().set(opt).from(element).save().then(() => {
-                // Ripristina la visualizzazione della pagina corrente
-                updatePageDisplay();
+                html2pdf().set(opt).from(container).save();
             });
         }
 
         // Funzione per salvare il contenuto in un file di testo
         function saveFile() {
-            const content = pages.map(page => page.innerHTML).join('<hr data-page-break="true">');
+            const content = document.getElementById('editor').innerHTML;
             const blob = new Blob([content], {type: "text/html;charset=utf-8"});
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -445,29 +395,8 @@
                 const reader = new FileReader();
                 reader.onload = event => {
                     const content = event.target.result;
-                    // Dividi il contenuto per pagina utilizzando l'hr come separatore
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = content;
-                    const pageContents = content.split('<hr data-page-break="true">');
-
-                    // Ricostruisci le pagine
-                    pages = [];
-                    document.getElementById('pagesContainer').innerHTML = '';
-                    pageContents.forEach((pageContent, index) => {
-                        const page = document.createElement('div');
-                        page.classList.add('page', isRighe ? 'righe' : 'quadri');
-                        const editor = document.createElement('div');
-                        editor.classList.add('editor');
-                        editor.contentEditable = true;
-                        editor.innerHTML = pageContent;
-                        editor.addEventListener('input', handleInput);
-                        editor.addEventListener('paste', handlePaste);
-                        page.appendChild(editor);
-                        pages.push(page);
-                        document.getElementById('pagesContainer').appendChild(page);
-                    });
-                    currentPageIndex = 0;
-                    updatePageDisplay();
+                    document.getElementById('editor').innerHTML = content;
+                    paged.polyfill();
                 };
                 reader.readAsText(file);
             }
@@ -475,14 +404,23 @@
         }
 
         // Prevenire l'incollaggio di formattazione indesiderata
-        function handlePaste(e) {
+        const editor = document.getElementById('editor');
+        editor.addEventListener('paste', function(e) {
             e.preventDefault();
             const text = (e.clipboardData || window.clipboardData).getData('text/plain');
             document.execCommand('insertText', false, text);
-        }
+        });
 
-        // Inizializza l'editor
-        init();
+        // Aggiorna il conteggio delle pagine quando Paged.js ha finito di elaborare
+        document.addEventListener('pagedjs:rendered', (e) => {
+            totalPages = e.detail.total;
+            currentPage = 1;
+            updatePageDisplay();
+        });
+
+        // Inizializza Paged.js
+        paged.polyfill();
+
     </script>
 </body>
 </html>
