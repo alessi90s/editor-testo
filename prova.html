@@ -72,13 +72,18 @@
         /* Stili per la pagina */
         .page {
             position: relative;
-            width: 210mm;
-            min-height: 297mm;
+            width: 794px; /* Larghezza A4 in pixel */
+            height: 1123px; /* Altezza A4 in pixel */
             margin: 20px auto;
             overflow: hidden;
             background-color: #ffffff;
             box-sizing: border-box;
             page-break-after: always;
+            display: none; /* Nasconde tutte le pagine per mostrare solo quella corrente */
+        }
+
+        .page.current {
+            display: block; /* Mostra solo la pagina corrente */
         }
 
         /* Sfondo a righe */
@@ -96,14 +101,15 @@
         }
 
         /* Stili per l'editor */
-        #editor {
+        .editor {
             width: 100%;
-            min-height: 297mm;
+            height: 100%;
             padding: 20px 20px 20px 60px;
             box-sizing: border-box;
             outline: none;
             font-size: 16px;
             line-height: 24px;
+            overflow: auto;
         }
 
         /* Linea verticale sul margine sinistro (solo per sfondo a righe) */
@@ -117,9 +123,25 @@
             background-color: #c0c0c0;
         }
 
-        /* Evita interruzioni a metà riga */
-        .page {
-            page-break-inside: avoid;
+        /* Barra di navigazione delle pagine */
+        .page-navigation {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0;
+        }
+
+        .page-navigation button {
+            margin: 0 10px;
+            padding: 10px;
+            font-size: 18px;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .page-navigation span {
+            font-size: 18px;
         }
     </style>
     <!-- Inclusione della libreria html2pdf.js -->
@@ -152,19 +174,72 @@
 
     <!-- Contenitore delle pagine -->
     <div id="pagesContainer">
-        <!-- Area della pagina con l'editor -->
-        <div class="page righe" id="page">
-            <div id="editor" contenteditable="true"></div>
-        </div>
+        <!-- Le pagine saranno generate dinamicamente -->
+    </div>
+
+    <!-- Barra di navigazione delle pagine -->
+    <div class="page-navigation">
+        <button onclick="prevPage()" title="Pagina precedente"><i class="fas fa-arrow-left"></i></button>
+        <span id="currentPage">1</span>
+        <button onclick="nextPage()" title="Pagina successiva"><i class="fas fa-arrow-right"></i></button>
     </div>
 
     <!-- Script JavaScript -->
     <script>
         let isRighe = true;
+        let currentPageIndex = 0;
+        let pages = [];
+
+        // Inizializza la prima pagina
+        function init() {
+            addPage();
+            updatePageDisplay();
+        }
+
+        // Funzione per aggiungere una nuova pagina
+        function addPage() {
+            const page = document.createElement('div');
+            page.classList.add('page', 'righe');
+            const editor = document.createElement('div');
+            editor.classList.add('editor');
+            editor.contentEditable = true;
+            editor.addEventListener('paste', handlePaste);
+            page.appendChild(editor);
+            pages.push(page);
+            document.getElementById('pagesContainer').appendChild(page);
+        }
+
+        // Funzione per aggiornare la visualizzazione delle pagine
+        function updatePageDisplay() {
+            pages.forEach((page, index) => {
+                page.classList.remove('current');
+                if (index === currentPageIndex) {
+                    page.classList.add('current');
+                }
+            });
+            document.getElementById('currentPage').textContent = currentPageIndex + 1;
+        }
+
+        // Funzioni di navigazione tra le pagine
+        function prevPage() {
+            if (currentPageIndex > 0) {
+                currentPageIndex--;
+                updatePageDisplay();
+            }
+        }
+
+        function nextPage() {
+            if (currentPageIndex < pages.length - 1) {
+                currentPageIndex++;
+            } else {
+                addPage();
+                currentPageIndex = pages.length - 1;
+            }
+            updatePageDisplay();
+        }
 
         // Funzione per switchare tra sfondo a righe e a quadri
         function switchBackground() {
-            const pages = document.querySelectorAll('.page');
             pages.forEach(page => {
                 if (isRighe) {
                     page.classList.remove('righe');
@@ -271,13 +346,13 @@
 
         // Funzioni per spostare il testo verticalmente
         function moveTextUp() {
-            const editor = document.getElementById('editor');
+            const editor = pages[currentPageIndex].querySelector('.editor');
             const currentMargin = parseInt(window.getComputedStyle(editor).marginTop) || 0;
             editor.style.marginTop = (currentMargin - 5) + 'px';
         }
 
         function moveTextDown() {
-            const editor = document.getElementById('editor');
+            const editor = pages[currentPageIndex].querySelector('.editor');
             const currentMargin = parseInt(window.getComputedStyle(editor).marginTop) || 0;
             editor.style.marginTop = (currentMargin + 5) + 'px';
         }
@@ -297,7 +372,7 @@
                     windowWidth: document.documentElement.offsetWidth,
                     windowHeight: document.documentElement.offsetHeight
                 },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                jsPDF:        { unit: 'pt', format: 'a4', orientation: 'portrait' }
             };
 
             html2pdf().set(opt).from(element).save();
@@ -305,7 +380,7 @@
 
         // Funzione per salvare il contenuto in un file di testo
         function saveFile() {
-            const content = document.getElementById('pagesContainer').innerHTML;
+            const content = pages.map(page => page.innerHTML).join('');
             const blob = new Blob([content], {type: "text/plain;charset=utf-8"});
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
@@ -322,40 +397,42 @@
                 const file = e.target.files[0];
                 const reader = new FileReader();
                 reader.onload = event => {
-                    document.getElementById('pagesContainer').innerHTML = event.target.result;
-                    // Aggiorna gli event listener per le nuove pagine
-                    updatePageListeners();
+                    const content = event.target.result;
+                    // Dividi il contenuto per pagina se necessario
+                    pages = [];
+                    document.getElementById('pagesContainer').innerHTML = '';
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = content;
+                    const loadedPages = tempDiv.querySelectorAll('.page');
+                    if (loadedPages.length > 0) {
+                        loadedPages.forEach(loadedPage => {
+                            const page = loadedPage.cloneNode(true);
+                            page.querySelector('.editor').addEventListener('paste', handlePaste);
+                            pages.push(page);
+                            document.getElementById('pagesContainer').appendChild(page);
+                        });
+                    } else {
+                        // Se il file non contiene pagine, crea una nuova pagina
+                        addPage();
+                        pages[0].querySelector('.editor').innerHTML = content;
+                    }
+                    currentPageIndex = 0;
+                    updatePageDisplay();
                 };
                 reader.readAsText(file);
             }
             input.click();
         }
 
-        // Aggiorna gli event listener per le nuove pagine (dopo il caricamento)
-        function updatePageListeners() {
-            const editors = document.querySelectorAll('[contenteditable="true"]');
-            editors.forEach(editor => {
-                editor.addEventListener('paste', function(e) {
-                    e.preventDefault();
-                    const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-                    document.execCommand('insertText', false, text);
-                });
-            });
-        }
-
-        // Prevenire l'incollaggio di formattazione indesiderata nell'editor principale
-        const editor = document.getElementById('editor');
-        editor.addEventListener('paste', function(e) {
+        // Prevenire l'incollaggio di formattazione indesiderata
+        function handlePaste(e) {
             e.preventDefault();
             const text = (e.clipboardData || window.clipboardData).getData('text/plain');
             document.execCommand('insertText', false, text);
-        });
+        }
 
-        // Assicurati che il contenuto fluisca correttamente nelle pagine
-        editor.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-        });
+        // Inizializza l'editor
+        init();
     </script>
 </body>
 </html>
