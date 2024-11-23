@@ -1,437 +1,70 @@
-<!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
-    <title>Editor di Testo - Quaderno Virtuale</title>
-    <!-- Inclusione di Font Awesome per le icone -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Inclusione di Paged.js -->
-    <script src="https://unpkg.com/pagedjs/dist/paged.polyfill.js"></script>
-    <!-- Stili CSS -->
-    <style>
-        /* Stili per il corpo della pagina */
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
-            position: relative;
-            min-height: 100vh;
-        }
+<link href="/styles.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.snow.css" rel="stylesheet" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/quill@2.0.2/dist/quill.js"></script>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"
+/>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" />
 
-        /* Stili per la toolbar */
-        .toolbar {
-            display: flex;
-            flex-wrap: wrap;
-            background-color: #ffffff;
-            padding: 10px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            position: fixed;
-            top: 0;
-            width: 100%;
-            z-index: 2;
-            justify-content: center; /* Centratura della toolbar */
-        }
+<div id="toolbar-container">
+  <span class="ql-formats">
+    <select class="ql-font"></select>
+    <select class="ql-size"></select>
+  </span>
+  <span class="ql-formats">
+    <button class="ql-bold"></button>
+    <button class="ql-italic"></button>
+    <button class="ql-underline"></button>
+    <button class="ql-strike"></button>
+  </span>
+  <span class="ql-formats">
+    <select class="ql-color"></select>
+    <select class="ql-background"></select>
+  </span>
+  <span class="ql-formats">
+    <button class="ql-script" value="sub"></button>
+    <button class="ql-script" value="super"></button>
+  </span>
+  <span class="ql-formats">
+    <button class="ql-header" value="1"></button>
+    <button class="ql-header" value="2"></button>
+    <button class="ql-blockquote"></button>
+    <button class="ql-code-block"></button>
+  </span>
+  <span class="ql-formats">
+    <button class="ql-list" value="ordered"></button>
+    <button class="ql-list" value="bullet"></button>
+    <button class="ql-indent" value="-1"></button>
+    <button class="ql-indent" value="+1"></button>
+  </span>
+  <span class="ql-formats">
+    <button class="ql-direction" value="rtl"></button>
+    <select class="ql-align"></select>
+  </span>
+  <span class="ql-formats">
+    <button class="ql-link"></button>
+    <button class="ql-image"></button>
+    <button class="ql-video"></button>
+    <button class="ql-formula"></button>
+  </span>
+  <span class="ql-formats">
+    <button class="ql-clean"></button>
+  </span>
+</div>
+<div id="editor">
+</div>
 
-        .toolbar button {
-            margin: 5px;
-            padding: 10px;
-            font-size: 18px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            position: relative; /* Necessario per posizionare le palette */
-        }
-
-        .toolbar button:hover {
-            background-color: #e0e0e0;
-            border-radius: 5px;
-        }
-
-        /* Stili per le palette di colori */
-        .color-palette {
-            position: absolute;
-            background-color: #ffffff;
-            padding: 10px;
-            border: 1px solid #ccc;
-            display: grid;
-            grid-template-columns: repeat(4, 30px);
-            grid-gap: 5px;
-            z-index: 1000;
-            top: 100%; /* Posiziona la palette sotto il pulsante */
-            left: 0;
-        }
-
-        /* Nascondi la palette quando non attiva */
-        .color-palette.hidden {
-            display: none;
-        }
-
-        .color-palette button {
-            width: 30px;
-            height: 30px;
-            border: none;
-            cursor: pointer;
-        }
-
-        /* Contenitore dell'editor */
-        #editorContainer {
-            width: 210mm;
-            margin: 0 auto;
-            padding-bottom: 60px; /* Spazio per la barra di navigazione */
-            position: relative;
-            z-index: 1;
-            padding-top: 70px; /* Spazio per la toolbar */
-        }
-
-        /* Stili per l'editor */
-        #editor {
-            min-height: 297mm;
-            padding: 20px 20px 20px 60px;
-            box-sizing: border-box;
-            outline: none;
-            font-size: 16px;
-            line-height: 24px;
-            background-color: #ffffff;
-            position: relative;
-        }
-
-        /* Allineamento del testo alle righe */
-        #editor {
-            line-height: 24px; /* Altezza della linea per allinearsi con le righe */
-        }
-
-        /* Sfondo a righe */
-        #editor.righe {
-            background-image: linear-gradient(to bottom, transparent 95%, #c0c0c0 95%, #c0c0c0 100%);
-            background-size: 100% 24px;
-        }
-
-        /* Sfondo a quadri */
-        #editor.quadri {
-            background-image:
-                linear-gradient(to bottom, transparent 95%, #c0c0c0 95%, #c0c0c0 100%),
-                linear-gradient(to right, transparent 95%, #c0c0c0 95%, #c0c0c0 100%);
-            background-size: 24px 24px;
-        }
-
-        /* Linea verticale sul margine sinistro (solo per sfondo a righe) */
-        #editor.righe::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 50px;
-            bottom: 0;
-            width: 2px;
-            background-color: #c0c0c0;
-        }
-
-        /* Stili per la pagina generata da Paged.js */
-        .pagedjs_page {
-            margin: 0 auto;
-            box-shadow: none;
-        }
-
-        /* Barra di navigazione delle pagine */
-        .page-navigation {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 10px;
-            background-color: #ffffff;
-            box-shadow: 0 -2px 4px rgba(0,0,0,0.1);
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-            z-index: 2;
-        }
-
-        .page-navigation button {
-            margin: 0 10px;
-            padding: 10px;
-            font-size: 18px;
-            background: none;
-            border: none;
-            cursor: pointer;
-        }
-
-        .page-navigation span {
-            font-size: 18px;
-        }
-
-        /* Evita che la toolbar copra il contenuto durante la stampa */
-        @media print {
-            .toolbar,
-            .page-navigation {
-                display: none;
-            }
-        }
-    </style>
-    <!-- Inclusione della libreria html2pdf.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-</head>
-<body>
-    <!-- Toolbar con i pulsanti di controllo -->
-    <div class="toolbar">
-        <button onclick="switchBackground()" title="Cambia sfondo"><i class="fas fa-exchange-alt"></i></button>
-        <button onclick="makeBold()" title="Grassetto"><i class="fas fa-bold"></i></button>
-        <button onclick="makeItalic()" title="Corsivo"><i class="fas fa-italic"></i></button>
-        <button onclick="makeUnderline()" title="Sottolineato"><i class="fas fa-underline"></i></button>
-
-        <!-- Pulsante per il colore del testo con palette -->
-        <button onclick="toggleTextColorPalette()" title="Colore del testo"><i class="fas fa-palette"></i>
-            <div id="textColorPalette" class="color-palette hidden"></div>
-        </button>
-
-        <!-- Pulsante per l'evidenziazione con palette -->
-        <button onclick="toggleHighlightColorPalette()" title="Evidenzia"><i class="fas fa-highlighter"></i>
-            <div id="highlightColorPalette" class="color-palette hidden"></div>
-        </button>
-
-        <button onclick="saveAsPDF()" title="Salva come PDF"><i class="fas fa-file-pdf"></i></button>
-        <button onclick="saveFile()" title="Salva"><i class="fas fa-save"></i></button>
-        <button onclick="loadFile()" title="Apri"><i class="fas fa-folder-open"></i></button>
-    </div>
-
-    <!-- Contenitore dell'editor -->
-    <div id="editorContainer">
-        <div id="editor" contenteditable="true" class="righe"></div>
-    </div>
-
-    <!-- Barra di navigazione delle pagine -->
-    <div class="page-navigation">
-        <button onclick="prevPage()" title="Pagina precedente"><i class="fas fa-arrow-left"></i></button>
-        <span id="currentPage">1</span> / <span id="totalPages">1</span>
-        <button onclick="nextPage()" title="Pagina successiva"><i class="fas fa-arrow-right"></i></button>
-    </div>
-
-    <!-- Script JavaScript -->
-    <script>
-        let isRighe = true;
-        let currentPage = 1;
-        let totalPages = 1;
-
-        // Funzione per aggiornare la visualizzazione del numero di pagina
-        function updatePageDisplay() {
-            document.getElementById('currentPage').textContent = currentPage;
-            document.getElementById('totalPages').textContent = totalPages;
-        }
-
-        // Funzioni di navigazione tra le pagine
-        function prevPage() {
-            if (currentPage > 1) {
-                currentPage--;
-                scrollToPage(currentPage);
-                updatePageDisplay();
-            }
-        }
-
-        function nextPage() {
-            if (currentPage < totalPages) {
-                currentPage++;
-                scrollToPage(currentPage);
-                updatePageDisplay();
-            }
-        }
-
-        function scrollToPage(pageNumber) {
-            const page = document.querySelector(`.pagedjs_page[data-page-number='${pageNumber}']`);
-            if (page) {
-                window.scrollTo({
-                    top: page.offsetTop - document.querySelector('.toolbar').offsetHeight,
-                    behavior: 'smooth'
-                });
-            }
-        }
-
-        // Funzione per switchare tra sfondo a righe e a quadri
-        function switchBackground() {
-            const editor = document.getElementById('editor');
-            if (isRighe) {
-                editor.classList.remove('righe');
-                editor.classList.add('quadri');
-            } else {
-                editor.classList.remove('quadri');
-                editor.classList.add('righe');
-            }
-            isRighe = !isRighe;
-        }
-
-        // Funzioni di formattazione del testo
-        function makeBold() {
-            document.execCommand('bold');
-        }
-
-        function makeItalic() {
-            document.execCommand('italic');
-        }
-
-        function makeUnderline() {
-            document.execCommand('underline');
-        }
-
-        // Funzioni per il colore del testo e l'evidenziazione con palette di colori predefiniti
-        function toggleTextColorPalette() {
-            const palette = document.getElementById('textColorPalette');
-            palette.classList.toggle('hidden');
-            if (!palette.classList.contains('hidden')) {
-                populateColorPalette(palette, setTextColor);
-            }
-            // Nascondi l'altra palette se aperta
-            document.getElementById('highlightColorPalette').classList.add('hidden');
-        }
-
-        function toggleHighlightColorPalette() {
-            const palette = document.getElementById('highlightColorPalette');
-            palette.classList.toggle('hidden');
-            if (!palette.classList.contains('hidden')) {
-                populateColorPalette(palette, setHighlightColor);
-            }
-            // Nascondi l'altra palette se aperta
-            document.getElementById('textColorPalette').classList.add('hidden');
-        }
-
-        // Funzione per generare la palette di colori
-        function populateColorPalette(palette, applyColorFunction) {
-            palette.innerHTML = ''; // Svuota la palette
-            const colors = getPastelColors();
-            colors.forEach(color => {
-                const button = document.createElement('button');
-                button.style.backgroundColor = color;
-                button.onclick = () => {
-                    applyColorFunction(color);
-                    palette.classList.add('hidden'); // Nascondi la palette dopo la selezione
-                };
-                palette.appendChild(button);
-            });
-        }
-
-        // Funzione per ottenere un array di colori pastello classici
-        function getPastelColors() {
-            return [
-                '#000000', // Nero
-                '#FFFFFF', // Bianco
-                '#FFB3BA', // Rosa
-                '#FFDFBA', // Arancione chiaro
-                '#FFFFBA', // Giallo chiaro
-                '#BAFFC9', // Verde menta
-                '#BAE1FF', // Azzurro
-                '#D7BAFF', // Lilla
-                '#FFC8DD', // Rosa pastello
-                '#FFAFCC', // Rosa salmone
-                '#CDEAC0', // Verde pastello
-                '#BDE0FE', // Blu pastello
-                '#A2D2FF', // Blu cielo
-                '#C3B1E1', // Viola pastello
-                '#FDE2E4', // Rosa pallido
-                '#E2ECE9'  // Verde acqua
-            ];
-        }
-
-        // Funzioni per applicare il colore
-        function setTextColor(color) {
-            document.execCommand('foreColor', false, color);
-        }
-
-        function setHighlightColor(color) {
-            document.execCommand('backColor', false, color);
-        }
-
-        // Chiudi le palette cliccando fuori
-        document.addEventListener('click', function(event) {
-            const textPalette = document.getElementById('textColorPalette');
-            const highlightPalette = document.getElementById('highlightColorPalette');
-            if (!textPalette.contains(event.target) && !event.target.closest('[onclick="toggleTextColorPalette()"]')) {
-                textPalette.classList.add('hidden');
-            }
-            if (!highlightPalette.contains(event.target) && !event.target.closest('[onclick="toggleHighlightColorPalette()"]')) {
-                highlightPalette.classList.add('hidden');
-            }
-        });
-
-        // Funzione per salvare il contenuto come PDF
-        function saveAsPDF() {
-            paged.ready.then(() => {
-                const clonedContent = document.getElementById('editorContainer').cloneNode(true);
-                clonedContent.style.paddingTop = '0';
-                clonedContent.querySelector('#editor').style.marginTop = '0';
-
-                const opt = {
-                    margin:       0,
-                    filename:     'documento.pdf',
-                    image:        { type: 'jpeg', quality: 1 },
-                    html2canvas:  {
-                        scale: 2,
-                        useCORS: true,
-                        scrollX: 0,
-                        scrollY: 0,
-                        windowWidth: document.documentElement.offsetWidth,
-                        windowHeight: document.documentElement.offsetHeight
-                    },
-                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-                };
-
-                html2pdf().set(opt).from(clonedContent).save();
-            });
-        }
-
-        // Funzione per salvare il contenuto in un file di testo
-        function saveFile() {
-            const content = document.getElementById('editor').innerHTML;
-            const blob = new Blob([content], {type: "text/html;charset=utf-8"});
-            const link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = "documento.html";
-            link.click();
-        }
-
-        // Funzione per caricare un file di testo
-        function loadFile() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'text/html';
-            input.onchange = e => {
-                const file = e.target.files[0];
-                const reader = new FileReader();
-                reader.onload = event => {
-                    const content = event.target.result;
-                    document.getElementById('editor').innerHTML = content;
-                    paged.polyfill();
-                };
-                reader.readAsText(file);
-            }
-            input.click();
-        }
-
-        // Prevenire l'incollaggio di formattazione indesiderata
-        const editor = document.getElementById('editor');
-        editor.addEventListener('paste', function(e) {
-            e.preventDefault();
-            const text = (e.clipboardData || window.clipboardData).getData('text/plain');
-            document.execCommand('insertText', false, text);
-        });
-
-        // Aggiorna il conteggio delle pagine quando Paged.js ha finito di elaborare
-        document.addEventListener('pagedjs:rendered', (e) => {
-            totalPages = e.detail.total;
-            updatePageDisplay();
-        });
-
-        // Inizializza Paged.js dopo un piccolo delay per assicurarsi che il contenuto sia caricato
-        setTimeout(() => {
-            paged.polyfill();
-        }, 100);
-
-        // Evita che la toolbar copra il contenuto durante lo scroll
-        window.addEventListener('scroll', function() {
-            const toolbarHeight = document.querySelector('.toolbar').offsetHeight;
-            if (window.scrollY >= toolbarHeight) {
-                document.querySelector('.toolbar').classList.add('shadow');
-            } else {
-                document.querySelector('.toolbar').classList.remove('shadow');
-            }
-        });
-    </script>
-</body>
-</html>
+<!-- Initialize Quill editor -->
+<script>
+  const quill = new Quill('#editor', {
+    modules: {
+      syntax: true,
+      toolbar: '#toolbar-container',
+    },
+    placeholder: 'Compose an epic...',
+    theme: 'snow',
+  });
+</script>
